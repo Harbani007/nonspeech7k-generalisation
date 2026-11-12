@@ -1,0 +1,11 @@
+numpy
+scipy
+pandas
+scikit-learn
+soundfile
+matplotlib
+# only for --embeddings (AST / CLAP):
+# torch
+# transformers
+# only for rebuilding the PDF brief:
+# reportlab
