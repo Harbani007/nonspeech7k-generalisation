@@ -7,6 +7,7 @@ struct/spec need only numpy/scipy. ast/clap need torch + transformers and downlo
 from the Hugging Face hub on first use (not exercised in this repo's smoke test).
 """
 import argparse
+import json
 import os
 from multiprocessing import Pool
 
@@ -17,14 +18,15 @@ from features import COMPUTERS, load_mono
 
 
 def _hand(args):
-    path, name = args
+    path, name, kw = args
     x, sr = load_mono(path)
-    return COMPUTERS[name](x, sr)
+    return COMPUTERS[name](x, sr, **kw)
 
 
-def run_handcrafted(name, paths, out, workers):
+def run_handcrafted(name, paths, out, workers, kw=None):
+    kw = kw if name == "struct" and kw else {}
     with Pool(workers) as pool:
-        rows = pool.map(_hand, [(p, name) for p in paths], chunksize=16)
+        rows = pool.map(_hand, [(p, name, kw) for p in paths], chunksize=16)
     cols = list(rows[0].keys())
     return np.array([[r[c] for c in cols] for r in rows]), cols
 
@@ -86,7 +88,15 @@ def main():
     ap.add_argument("--sets", nargs="+", default=["struct", "spec"])
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--limit", type=int, default=0, help="debug: only first N clips")
+    ap.add_argument("--burst-params", help="JSON from tune_bursts.py; default: thresholds in features.py")
     a = ap.parse_args()
+
+    kw = {}
+    if a.burst_params:
+        with open(a.burst_params, encoding="utf-8") as f:
+            bp = json.load(f)
+        kw = {"prom_db": bp["prom_db"], "min_gap_s": bp["min_gap_s"]}
+        print(f"burst thresholds from {a.burst_params}: {kw}")
 
     meta = load_meta(a.meta_train, a.meta_test)
     if a.limit:
@@ -99,7 +109,7 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     for name in a.sets:
         if name in COMPUTERS:
-            X, cols = run_handcrafted(name, paths, a.out, a.workers)
+            X, cols = run_handcrafted(name, paths, a.out, a.workers, kw)
         elif name == "ast":
             X, cols = run_ast(paths)
         elif name == "clap":
