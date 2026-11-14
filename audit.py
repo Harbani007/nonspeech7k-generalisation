@@ -18,3 +18,11 @@ g = tr.groupby("cls").group.agg(clips="size", recordings="nunique")
 g["clips_per_recording"] = (g.clips / g.recordings).round(1)
 g["largest_recording_share"] = tr.groupby("cls").group.apply(lambda s: s.value_counts(normalize=True).iloc[0]).round(3)
 print(g)
+
+# Where the clips come from. Sources unevenly spread over classes are a shortcut a classifier can learn.
+names = tr.groupby("y").cls.first()
+for part, d in [("train", tr), ("test", te)]:
+    t = pd.crosstab(d.y.map(names), d.source, margins=True, margins_name="all")
+    print(f"\n{part} clips by website")
+    print(t)
+    print(f"{part} recordings by website:", d.groupby("source").group.nunique().to_dict())

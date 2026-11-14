@@ -53,7 +53,8 @@ def main():
     feats, figs = os.path.join(wd, "feats"), os.path.join(wd, "figures")
     flag = ["--synthetic"] if a.synthetic else []
     sets = ["struct", "spec"] + (["ast", "clap"] if a.embeddings else [])
-    exp_sets = ["spec", "struct", "struct-nf"] + (["ast", "ast+struct"] if a.embeddings else [])
+    exp_sets = ["spec", "struct", "struct-nf", "struct-nf-dur"] + (["ast", "ast+struct"] if a.embeddings else [])
+    protocols = ["official", "random", "group"] + ([] if a.synthetic else ["official_fs"])
 
     run("audit.py", a.meta_train, a.meta_test, save=os.path.join(wd, "audit.txt"))
     if not a.skip_extract:
@@ -63,7 +64,7 @@ def main():
         run("extract.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--audio-root", a.audio_root,
             "--out", feats, "--sets", *sets, "--burst-params", bp)
     run("run_experiments.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--feats", feats,
-        "--sets", *exp_sets, "--seeds", seeds, "--budgets", *budgets, "--out", os.path.join(wd, "results.csv"),
+        "--sets", *exp_sets, "--protocols", *protocols, "--seeds", seeds, "--budgets", *budgets, "--out", os.path.join(wd, "results.csv"),
         save=os.path.join(wd, "summary.txt"))
     run("probe_source.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--feats", feats,
         "--sets", *[s for s in ["spec", "struct", "ast"] if s in sets],

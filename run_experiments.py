@@ -4,11 +4,14 @@ Protocols
   official  : train on the official train clips, test on the official test clips
   random    : stratified random clip split of the pooled data (recordings leak across the split)
   group     : stratified split disjoint by File_ID (test recordings never seen in training)
+  official_fs : official split, but training clips drawn only from Freesound, the single source of the
+              official test set (same budget, so it isolates the effect of the training-source mix)
 
 For each (protocol, seed) one split is drawn; training clips are then subsampled to `budget`
 clips ('random' = random clips per class, 'balanced' = at most --kmax clips per recording).
 
-Feature-set spec: names joined by '+', e.g. struct, struct-nf (drops nf_* columns), spec, ast, ast+struct.
+Feature-set spec: names joined by '+', e.g. struct, struct-nf (drops nf_* columns), struct-nf-dur (also drops
+dur_*), spec, ast, ast+struct.
 Blocks are standardised on the training subset and scaled by 1/sqrt(dim) so a 25-d block is not
 drowned by a 768-d block, then fed to a class-balanced logistic regression.
 """
@@ -31,10 +34,10 @@ CS = [0.3, 3.0, 30.0]
 def get_blocks(spec, meta, feat_dir):
     blocks = []
     for tok in spec.split("+"):
-        drop_nf = tok.endswith("-nf")
-        X, cols = load_feats(feat_dir, meta, tok[:-3] if drop_nf else tok)
-        if drop_nf:
-            keep = [i for i, c in enumerate(cols) if not c.startswith("nf_")]
+        name, *drop = tok.split("-")
+        X, cols = load_feats(feat_dir, meta, name)
+        if drop:
+            keep = [i for i, c in enumerate(cols) if not any(c.startswith(d + "_") for d in drop)]
             X = X[:, keep]
         blocks.append(X)
     return blocks
@@ -44,6 +47,11 @@ def make_split(protocol, meta, seed):
     y, g = meta["y"].values, meta["group"].values
     if protocol == "official":
         return np.where(meta["split"] == "train")[0], np.where(meta["split"] == "test")[0]
+    if protocol == "official_fs":
+        tr = (meta["split"] == "train") & (meta["source"] == "freesound")
+        if not tr.any():
+            raise SystemExit("official_fs: no Freesound clips in the train metadata (no 'source' column?)")
+        return np.where(tr)[0], np.where(meta["split"] == "test")[0]
     if protocol == "random":
         cv = StratifiedKFold(5, shuffle=True, random_state=seed).split(y, y)
     else:
@@ -152,6 +160,10 @@ def main():
         t = r.pivot_table(index=["featureset", "budget"], columns="protocol", values="macro_f1")
         print("\nprotocol gap (random - group), smaller = more robust to unseen recordings")
         print((t["random"] - t["group"]).round(3).unstack("budget"))
+    if {"official", "official_fs"} <= set(a.protocols):
+        t = r.pivot_table(index=["featureset", "budget"], columns="protocol", values="macro_f1")
+        print("\nofficial test (all Freesound): Freesound-only training minus all-source training, same budget")
+        print((t["official_fs"] - t["official"]).round(3).unstack("budget"))
     print("\nmacro-F1 under group protocol: random vs recording-balanced sampling")
     print(df[df["protocol"] == "group"].pivot_table(index=["featureset", "budget"], columns="mode",
                                                     values="macro_f1").round(3))
