@@ -1,0 +1,36 @@
+Recording-identity probe (within class). lift = accuracy - chance; higher = more recording identity in the features
+              acc  chance   lift
+featureset                      
+spec        0.929   0.129  0.800
+struct      0.721   0.129  0.592
+
+Website probe (within class, unseen recordings). lift = balanced accuracy - chance
+featureset                    spec  struct
+cls       sources                         
+cough     aigei/freesound    0.066  -0.004
+crying    aigei/freesound    0.335   0.326
+laugh     freesound/youtube  0.026   0.263
+screaming aigei/freesound    0.218   0.166
+sneeze    aigei/freesound    0.137   0.107
+yawn      aigei/freesound    0.163   0.170
+            bal_acc  chance   lift
+featureset                        
+spec          0.657     0.5  0.157
+struct        0.671     0.5  0.171
+Recording-identity probe (within class). lift = accuracy - chance; higher = more recording identity in the features
+              acc  chance   lift
+featureset                      
+ast         0.967   0.129  0.838
+
+Website probe (within class, unseen recordings). lift = balanced accuracy - chance
+featureset                     ast
+cls       sources                 
+cough     aigei/freesound   -0.015
+crying    aigei/freesound    0.407
+laugh     freesound/youtube  0.199
+screaming aigei/freesound    0.190
+sneeze    aigei/freesound    0.225
+yawn      aigei/freesound    0.320
+            bal_acc  chance   lift
+featureset                        
+ast           0.721     0.5  0.221

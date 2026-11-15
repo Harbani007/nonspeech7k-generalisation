@@ -1,0 +1,130 @@
+done official seed 0
+done official seed 1
+done official seed 2
+done official seed 3
+done official seed 4
+done random seed 0
+done random seed 1
+done random seed 2
+done random seed 3
+done random seed 4
+done group seed 0
+done group seed 1
+done group seed 2
+done group seed 3
+done group seed 4
+done official_fs seed 0
+done official_fs seed 1
+done official_fs seed 2
+done official_fs seed 3
+done official_fs seed 4
+
+macro-F1 (mean over seeds), mode=random
+protocol              group  official  official_fs  random
+featureset    budget                                      
+spec          300     0.509     0.429        0.437   0.514
+              500     0.514     0.446        0.463   0.532
+              700     0.536     0.466        0.451   0.545
+struct        300     0.492     0.420        0.433   0.506
+              500     0.504     0.453        0.449   0.543
+              700     0.490     0.462        0.445   0.544
+struct-nf     300     0.498     0.414        0.418   0.506
+              500     0.498     0.445        0.432   0.540
+              700     0.492     0.454        0.434   0.547
+struct-nf-dur 300     0.480     0.428        0.413   0.498
+              500     0.487     0.455        0.437   0.525
+              700     0.488     0.470        0.438   0.541
+
+protocol gap (random - group), smaller = more robust to unseen recordings
+budget           300    500    700
+featureset                        
+spec           0.005  0.018  0.009
+struct         0.014  0.039  0.055
+struct-nf      0.008  0.043  0.054
+struct-nf-dur  0.018  0.038  0.053
+
+official test (all Freesound): Freesound-only training minus all-source training, same budget
+budget           300    500    700
+featureset                        
+spec           0.007  0.017 -0.015
+struct         0.013 -0.004 -0.017
+struct-nf      0.004 -0.012 -0.020
+struct-nf-dur -0.015 -0.018 -0.033
+
+macro-F1 under group protocol: random vs recording-balanced sampling
+mode                  balanced  random
+featureset    budget                  
+spec          300        0.433   0.509
+              500        0.433   0.514
+              700        0.400   0.536
+struct        300        0.507   0.492
+              500        0.532   0.504
+              700        0.550   0.490
+struct-nf     300        0.509   0.498
+              500        0.531   0.498
+              700        0.555   0.492
+struct-nf-dur 300        0.486   0.480
+              500        0.516   0.487
+              700        0.536   0.488
+
+mean distinct training recordings per budget/mode (group protocol)
+mode    balanced  random
+budget                  
+300        197.0   223.4
+500        335.0   338.2
+700        453.6   442.8
+
+macro-F1 (mean over seeds), mode=random
+protocol                   group  official  official_fs  random
+featureset         budget                                      
+ast                300     0.845     0.798        0.793   0.836
+                   500     0.849     0.814        0.784   0.854
+                   700     0.840     0.823        0.786   0.869
+ast+spec           300     0.830     0.797        0.781   0.830
+                   500     0.836     0.809        0.784   0.845
+                   700     0.830     0.822        0.788   0.862
+ast+spec+struct-nf 300     0.819     0.780        0.759   0.815
+                   500     0.829     0.798        0.775   0.842
+                   700     0.823     0.809        0.787   0.859
+ast+struct-nf      300     0.834     0.769        0.776   0.816
+                   500     0.829     0.789        0.785   0.849
+                   700     0.824     0.812        0.791   0.848
+
+protocol gap (random - group), smaller = more robust to unseen recordings
+budget                300    500    700
+featureset                             
+ast                -0.009  0.005  0.029
+ast+spec           -0.000  0.009  0.031
+ast+spec+struct-nf -0.004  0.013  0.036
+ast+struct-nf      -0.019  0.020  0.025
+
+official test (all Freesound): Freesound-only training minus all-source training, same budget
+budget                300    500    700
+featureset                             
+ast                -0.005 -0.030 -0.037
+ast+spec           -0.016 -0.025 -0.034
+ast+spec+struct-nf -0.021 -0.023 -0.022
+ast+struct-nf       0.007 -0.005 -0.021
+
+macro-F1 under group protocol: random vs recording-balanced sampling
+mode                       balanced  random
+featureset         budget                  
+ast                300        0.815   0.845
+                   500        0.840   0.849
+                   700        0.848   0.840
+ast+spec           300        0.809   0.830
+                   500        0.822   0.836
+                   700        0.845   0.830
+ast+spec+struct-nf 300        0.814   0.819
+                   500        0.819   0.829
+                   700        0.836   0.823
+ast+struct-nf      300        0.818   0.834
+                   500        0.823   0.829
+                   700        0.842   0.824
+
+mean distinct training recordings per budget/mode (group protocol)
+mode    balanced  random
+budget                  
+300        197.0   223.4
+500        335.0   338.2
+700        453.6   442.8

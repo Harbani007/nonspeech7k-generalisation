@@ -1,0 +1,14 @@
+train only: 6289 clips, 1903 recordings, 5-fold grouped CV
+
+min_gap_s   0.05   0.08   0.12   0.20
+prom_db                              
+3.0        0.358  0.359  0.356  0.371
+4.5        0.328  0.327  0.330  0.352
+6.0        0.334  0.334  0.338  0.354
+9.0        0.337  0.336  0.337  0.343
+12.0       0.334  0.335  0.335  0.333
+
+default 6 dB / 0.08 s: 0.334
+best    3 dB / 0.2 s: 0.371 (SE 0.031)
+chosen  3 dB / 0.2 s (beats the default by more than 1 SE)
+saved C:\Users\Administrator\Downloads\nonspeech7k-generalisation\results\burst_params.json

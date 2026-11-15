@@ -1,0 +1,38 @@
+clips: train 6289 test 725
+recordings in both splits: 6 of 407 test recordings
+test clips from shared recordings: 4.4%
+           clips  recordings  clips_per_recording  largest_recording_share
+cls                                                                       
+breath      1690         144                 11.7                    0.489
+cough        632         251                  2.5                    0.028
+crying      1791        1017                  1.8                    0.085
+laugh       1133         183                  6.2                    0.132
+screaming    593         161                  3.7                    0.218
+sneeze       236         170                  1.4                    0.025
+yawn         214         128                  1.7                    0.033
+
+train clips by website
+source     aigei  freesound  youtube   all
+y                                         
+breath         0        622     1068  1690
+cough        502        130        0   632
+crying       958        666      167  1791
+laugh          0        818      315  1133
+screaming     70        465       58   593
+sneeze       140         89        7   236
+yawn          69        145        0   214
+all         1739       2935     1615  6289
+train recordings by website: {'aigei': 1193, 'freesound': 695, 'youtube': 15}
+
+test clips by website
+source     freesound  all
+y                        
+breath           160  160
+cough             70   70
+crying           205  205
+laugh            140  140
+screaming         70   70
+sneeze            30   30
+yawn              50   50
+all              725  725
+test recordings by website: {'freesound': 407}
