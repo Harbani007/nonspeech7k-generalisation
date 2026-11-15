@@ -16,6 +16,7 @@ smoke test, and its figures are watermarked as such. No claim about Nonspeech7k 
 ## What the code does
 
 1. `audit.py` - do train and test share source recordings? How concentrated is each class on a few recordings?
+   Which website (Freesound, Aigei, YouTube) does each class come from, in train and in test?
 2. `tune_bursts.py` - picks the burst-detection thresholds from the official **train set only** (grouped
    cross-validation by `File_ID`, burst features alone), and keeps the default unless another setting wins by
    more than one standard error. The test set is never loaded, so the choice cannot be tuned to the result.
@@ -23,10 +24,13 @@ smoke test, and its figures are watermarked as such. No claim about Nonspeech7k 
    - `struct` (38): burst count/rate, gaps between bursts, attack/decay, rhythm strength, modulation spectrum, envelope shape
    - `spec` (35): control set, MFCC mean/std and spectral statistics
    - `ast`, `clap`: frozen embeddings (optional, `--embeddings`)
-4. `run_experiments.py` - class-balanced logistic regression under three protocols (`official`, `random` clip split,
-   `group` split by `File_ID`), at training budgets of 300/500/700 clips, sampled randomly or with at most k clips
-   per recording. Reports macro-F1, balanced accuracy and per-class F1 over several seeds.
+4. `run_experiments.py` - class-balanced logistic regression under four protocols (`official`, `random` clip split,
+   `group` split by `File_ID`, and `official_fs`: the official test set but training clips only from Freesound, the
+   test set's single source), at training budgets of 300/500/700 clips, sampled randomly or with at most k clips
+   per recording. Reports macro-F1, balanced accuracy and per-class F1 over several seeds. `struct-nf-dur` drops the
+   noise-floor and duration features, since train and test clips differ in length.
 5. `probe_source.py` - how well can each feature set identify *which recording* a clip came from, within a class?
+   And, for recordings never seen in training, *which website* it came from?
 6. `plots.py`, `class_profile.py` - figures. `run_all.py` runs everything.
 
 The key number is the **protocol gap**: macro-F1 under the random split minus macro-F1 under the group split. A small

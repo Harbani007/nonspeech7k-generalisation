@@ -14,8 +14,16 @@ def _col(df, *candidates):
     raise KeyError(f"none of {candidates} in {list(df.columns)}")
 
 
+def _site(d):
+    try:
+        url = d[_col(d, "source")].astype(str)
+    except KeyError:
+        return "unknown"
+    return url.str.extract(r"//(?:www\.)?([a-z0-9-]+)", expand=False).fillna("unknown")
+
+
 def load_meta(train_csv, test_csv):
-    """Pooled metadata: filename, group (= File_ID, the source recording), y, cls, split."""
+    """Pooled metadata: filename, group (= File_ID, the source recording), y, cls, split, source (website)."""
     parts = []
     for path, split in [(train_csv, "train"), (test_csv, "test")]:
         d = pd.read_csv(path)
@@ -26,6 +34,7 @@ def load_meta(train_csv, test_csv):
             "y": d[_col(d, "Class_id")].astype(int),
             "cls": d[_col(d, "Classname")].astype(str).str.strip(),
             "split": split,
+            "source": _site(d),
         }))
     return pd.concat(parts, ignore_index=True)
 

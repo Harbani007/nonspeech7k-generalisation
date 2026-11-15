@@ -57,6 +57,42 @@ def main():
     df["lift"] = df["acc"] - df["chance"]
     print("Recording-identity probe (within class). lift = accuracy - chance; higher = more recording identity in the features")
     print(df.groupby("featureset")[["acc", "chance", "lift"]].mean().round(3))
+    website_probe(meta, a)
+
+
+def website_probe(meta, a, min_recs=5):
+    """Within a class, predict the website (freesound / aigei / youtube) of clips from recordings never seen in
+    training (folds grouped by File_ID). Above-chance balanced accuracy = the features carry a source signature
+    that, because sources are unevenly spread over classes, a classifier can use as a shortcut."""
+    from sklearn.metrics import balanced_accuracy_score
+    from sklearn.model_selection import StratifiedGroupKFold
+    rows = []
+    for s in a.sets:
+        X, _ = load_feats(a.feats, meta, s)
+        for c, sub in meta.groupby("y"):
+            recs = sub.groupby("source")["group"].nunique()
+            keep = recs[recs >= min_recs].index
+            if len(keep) < 2:
+                continue
+            sub = sub[sub["source"].isin(keep)]
+            idx, src, g = sub.index.values, sub["source"].values, sub["group"].values
+            pred = np.empty(len(idx), dtype=object)
+            for tr, te in StratifiedGroupKFold(5, shuffle=True, random_state=0).split(idx, src, g):
+                sc = StandardScaler().fit(X[idx[tr]])
+                m = LogisticRegression(C=1.0, max_iter=1000, class_weight="balanced")
+                pred[te] = m.fit(sc.transform(X[idx[tr]]), src[tr]).predict(sc.transform(X[idx[te]]))
+            rows.append(dict(featureset=s, y=int(c), cls=sub["cls"].iloc[0], sources="/".join(keep),
+                             n_clips=len(idx), bal_acc=balanced_accuracy_score(src, pred.astype(str)),
+                             chance=1.0 / len(keep)))
+    if not rows:
+        print(f"\nwebsite probe: no class has 2+ websites with {min_recs}+ recordings each")
+        return
+    w = pd.DataFrame(rows)
+    w["lift"] = w["bal_acc"] - w["chance"]
+    w.to_csv(a.out.replace(".csv", "_website.csv"), index=False)
+    print("\nWebsite probe (within class, unseen recordings). lift = balanced accuracy - chance")
+    print(w.pivot_table(index=["cls", "sources"], columns="featureset", values="lift").round(3))
+    print(w.groupby("featureset")[["bal_acc", "chance", "lift"]].mean().round(3))
 
 
 if __name__ == "__main__":
