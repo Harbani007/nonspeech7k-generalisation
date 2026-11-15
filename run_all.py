@@ -57,8 +57,11 @@ def main():
 
     run("audit.py", a.meta_train, a.meta_test, save=os.path.join(wd, "audit.txt"))
     if not a.skip_extract:
+        bp = os.path.join(wd, "burst_params.json")
+        run("tune_bursts.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--audio-root", a.audio_root,
+            "--out", bp, save=os.path.join(wd, "burst_tuning.txt"))
         run("extract.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--audio-root", a.audio_root,
-            "--out", feats, "--sets", *sets)
+            "--out", feats, "--sets", *sets, "--burst-params", bp)
     run("run_experiments.py", "--meta-train", a.meta_train, "--meta-test", a.meta_test, "--feats", feats,
         "--sets", *exp_sets, "--seeds", seeds, "--budgets", *budgets, "--out", os.path.join(wd, "results.csv"),
         save=os.path.join(wd, "summary.txt"))

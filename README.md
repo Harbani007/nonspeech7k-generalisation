@@ -16,15 +16,18 @@ smoke test, and its figures are watermarked as such. No claim about Nonspeech7k 
 ## What the code does
 
 1. `audit.py` - do train and test share source recordings? How concentrated is each class on a few recordings?
-2. `extract.py` - per-clip features, cached to `feats/`:
+2. `tune_bursts.py` - picks the burst-detection thresholds from the official **train set only** (grouped
+   cross-validation by `File_ID`, burst features alone), and keeps the default unless another setting wins by
+   more than one standard error. The test set is never loaded, so the choice cannot be tuned to the result.
+3. `extract.py` - per-clip features, cached to `feats/`:
    - `struct` (38): burst count/rate, gaps between bursts, attack/decay, rhythm strength, modulation spectrum, envelope shape
    - `spec` (35): control set, MFCC mean/std and spectral statistics
    - `ast`, `clap`: frozen embeddings (optional, `--embeddings`)
-3. `run_experiments.py` - class-balanced logistic regression under three protocols (`official`, `random` clip split,
+4. `run_experiments.py` - class-balanced logistic regression under three protocols (`official`, `random` clip split,
    `group` split by `File_ID`), at training budgets of 300/500/700 clips, sampled randomly or with at most k clips
    per recording. Reports macro-F1, balanced accuracy and per-class F1 over several seeds.
-4. `probe_source.py` - how well can each feature set identify *which recording* a clip came from, within a class?
-5. `plots.py`, `class_profile.py` - figures. `run_all.py` runs everything.
+5. `probe_source.py` - how well can each feature set identify *which recording* a clip came from, within a class?
+6. `plots.py`, `class_profile.py` - figures. `run_all.py` runs everything.
 
 The key number is the **protocol gap**: macro-F1 under the random split minus macro-F1 under the group split. A small
 gap means the features depend less on recording identity.
@@ -61,6 +64,7 @@ Add `--embeddings` to `run_all.py` for AST/CLAP (needs `torch` and `transformers
 | File | Contents |
 |---|---|
 | `audit.txt` | split overlap and per-class concentration |
+| `burst_params.json`, `burst_tuning.txt` | chosen burst thresholds and the grid they were picked from |
 | `summary.txt`, `results.csv` | macro-F1 tables and every individual run |
 | `probe.txt`, `probe.csv` | recording-identity probe |
 | `figures/1_protocols.png` | accuracy by protocol and feature set |
@@ -72,8 +76,8 @@ Add `--embeddings` to `run_all.py` for AST/CLAP (needs `torch` and `transformers
 ## Limitations
 
 - Nothing has been run on the real data, and the embedding code is untested.
-- Burst-detection thresholds in `features.py` (6 dB prominence, 80 ms spacing) are untuned guesses. Fix them before
-  looking at group-split results.
+- Burst-detection thresholds start as guesses (6 dB prominence, 80 ms spacing). `run_all.py` runs `tune_bursts.py`
+  first, which picks them from the train set only, but the tuning has not been run on the real data yet.
 - The hypothesis that structure features generalise better may be false. Related work is mixed and none tests it on
   this dataset.
 - Published descriptions of the official split disagree, and none says whether clips from one recording stay on the

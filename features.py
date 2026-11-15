@@ -18,6 +18,8 @@ from scipy.stats import kurtosis, skew
 HOP_S, WIN_S, EPS = 0.010, 0.025, 1e-10
 BANDS_HZ = [(100, 500), (500, 1500), (1500, 4000), (4000, 10000)]
 MOD_EDGES = [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]
+# burst detection: peak prominence (dB) and minimum gap between bursts (s); tune_bursts.py picks these
+BURST_PROM_DB, BURST_MIN_GAP_S = 6.0, 0.08
 
 
 def load_mono(path):
@@ -47,13 +49,35 @@ def _rise_decay(env_db, pk, drop=10.0, max_frames=100):
     return (pk - i) * HOP_S, (j - pk) * HOP_S
 
 
-def struct_features(x, sr):
+def envelope_db(P):
+    frame_p = _smooth(P.sum(0))
+    env_db = 10 * np.log10(frame_p + EPS)
+    return frame_p, env_db - env_db.max()  # level-invariant: relative to the loudest frame
+
+
+def burst_features(env_db, dur, prom_db=None, min_gap_s=None):
+    prom_db = BURST_PROM_DB if prom_db is None else prom_db
+    min_gap_s = BURST_MIN_GAP_S if min_gap_s is None else min_gap_s
+    pk, props = signal.find_peaks(env_db, prominence=prom_db, distance=max(1, round(min_gap_s / HOP_S)))
+    out = {"burst_n": len(pk), "burst_per_s": len(pk) / dur}
+    ibi = np.diff(pk) * HOP_S
+    out["burst_ibi_mean"] = ibi.mean() if len(ibi) else dur
+    out["burst_ibi_std"] = ibi.std() if len(ibi) > 1 else 0.0
+    out["burst_ibi_cv"] = ibi.std() / (ibi.mean() + EPS) if len(ibi) > 1 else 0.0
+    if len(pk):
+        top = pk[np.argsort(props["prominences"])[::-1][:5]]
+        rd = np.array([_rise_decay(env_db, q) for q in top])
+        out["burst_attack_s"], out["burst_decay_s"] = rd.mean(axis=0)
+    else:
+        out["burst_attack_s"] = out["burst_decay_s"] = 0.0
+    return out
+
+
+def struct_features(x, sr, prom_db=None, min_gap_s=None):
     f, P = _stft_power(x, sr)
     n = P.shape[1]
-    frame_p = _smooth(P.sum(0))
+    frame_p, env_db = envelope_db(P)
     amp = np.sqrt(frame_p)
-    env_db = 10 * np.log10(frame_p + EPS)
-    env_db = env_db - env_db.max()  # level-invariant: relative to the loudest frame
     out = {}
 
     active = env_db > -20.0
@@ -69,20 +93,7 @@ def struct_features(x, sr):
     p = frame_p / (frame_p.max() + EPS)
     out["env_flatness"] = np.exp(np.mean(np.log(p + EPS))) / (p.mean() + EPS)
 
-    pk, props = signal.find_peaks(env_db, prominence=6.0, distance=8)
-    dur = len(x) / sr
-    out["burst_n"] = len(pk)
-    out["burst_per_s"] = len(pk) / dur
-    ibi = np.diff(pk) * HOP_S
-    out["burst_ibi_mean"] = ibi.mean() if len(ibi) else dur
-    out["burst_ibi_std"] = ibi.std() if len(ibi) > 1 else 0.0
-    out["burst_ibi_cv"] = ibi.std() / (ibi.mean() + EPS) if len(ibi) > 1 else 0.0
-    if len(pk):
-        top = pk[np.argsort(props["prominences"])[::-1][:5]]
-        rd = np.array([_rise_decay(env_db, q) for q in top])
-        out["burst_attack_s"], out["burst_decay_s"] = rd.mean(axis=0)
-    else:
-        out["burst_attack_s"] = out["burst_decay_s"] = 0.0
+    out.update(burst_features(env_db, len(x) / sr, prom_db, min_gap_s))
 
     e = amp - amp.mean()
     ac = np.correlate(e, e, "full")[len(e) - 1:]
