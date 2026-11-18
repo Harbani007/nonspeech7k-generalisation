@@ -1,0 +1,8 @@
+[transformers] [1mASTModel LOAD REPORT[0m from: MIT/ast-finetuned-audioset-10-10-0.4593
+[1] live layers 0-10 from float16 filterbanks vs cached tokens, 6 clips: relative difference 4.55e-04
+device cpu; mixed precision False; inputs fbank (fbank.f16)
+mode finetune; trainable params 14,182,663; frozen params 72,009,984; train pool 32 clips / 22 sources; val 16; test 16; sampler source; supcon 0.5 (tau 0.1)
+epoch 1 train_loss 3.699 val_loss 1.428 val_acc 0.375 val_macroF1 0.545 pairs/batch 231.0 (160s)
+TEST: acc 0.562 macroF1 0.720 bal_acc 0.562; max relative change of pretrained weights 0.0014
+[2] end-to-end fbank run OK; pretrained layers updated: ['ast_layer_10', 'ast_layer_11']; max relative change 1.41e-03
+FBANK PATH CHECK PASSED

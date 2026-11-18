@@ -1,0 +1,2 @@
+system,role,evaluation,seeds,test_clips,test_sources,macro_f1,ci_lo,ci_hi,macro_f1_seed_sd,accuracy,balanced_accuracy,recall_breath,recall_cough,recall_crying,recall_laugh,recall_screaming,recall_sneeze,recall_yawn
+AST-FT ordinary,fine-tuned baseline (CE),source-disjoint test,1,1160,300,0.78530538016844,0.7191250200420277,0.8436086648623855,,0.8043103448275862,0.8374785538057211,0.8244274809160306,0.822429906542056,0.6973995271867612,0.8953846153846153,0.8169014084507042,0.9038461538461539,0.9019607843137255

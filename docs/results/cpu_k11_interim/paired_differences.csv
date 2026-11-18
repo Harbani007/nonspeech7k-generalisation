@@ -1,0 +1,13 @@
+comparison,evaluation,a,b,macro_f1_a,macro_f1_b,diff,ci_lo,ci_hi,seeds_a,seeds_b,ci_excludes_zero
+balanced - ordinary,source-disjoint test,AST-FT ordinary,AST-FT source-balanced,0.78530538016844,0.8102228042242643,0.02491742405582431,-0.009252658061311536,0.056585188432702146,1,1.0,False
+contrastive - ordinary,source-disjoint test,AST-FT ordinary,AST-FT cross-source contrastive,0.78530538016844,0.7752559565526316,-0.010049423615808406,-0.016921574166923744,-0.003923828228924298,1,1.0,True
+combined - ordinary,source-disjoint test,AST-FT ordinary,AST-FT combined,0.78530538016844,0.8138117957750216,0.028506415606581625,-0.0005431531545335072,0.05633355256546037,1,1.0,False
+combined - balanced,source-disjoint test,AST-FT source-balanced,AST-FT combined,0.8102228042242643,0.8138117957750216,0.0035889915507573145,-0.011106289425918264,0.01840245061415542,1,1.0,False
+combined - contrastive,source-disjoint test,AST-FT cross-source contrastive,AST-FT combined,0.7752559565526316,0.8138117957750216,0.03855583922239003,0.011221722043344312,0.06547243918105375,1,1.0,True
+AST-FT - CNN,source-disjoint test,CNN (scratch),AST-FT ordinary,0.7665545769748608,0.78530538016844,0.018750803193579135,-0.028556272922532516,0.0685600651304342,1,1.0,False
+CNN - structure LR,source-disjoint test,Structure + LR,CNN (scratch),0.5022265173180056,0.7665545769748608,0.26432805965685524,0.19937637864549299,0.3237010784600573,1,1.0,True
+CNN - structure LR,official test,Structure + LR,CNN (scratch),0.4959171946278812,0.7585279974653086,0.26261080283742744,0.20026899594803954,0.32756689347270856,1,1.0,True
+official - de-duplicated official (same model),official test,Spectral + LR,Spectral + LR,,,0.006932834396845999,-0.005079591833085683,0.02053725774975063,1,,False
+official - de-duplicated official (same model),official test,Structure + LR,Structure + LR,,,-0.0021072610170229655,-0.0183570643086891,0.013201280955759044,1,,False
+official - de-duplicated official (same model),official test,CNN (scratch),CNN (scratch),,,0.007432908153932161,-0.005604886246811769,0.019919385866975288,1,,False
+official - de-duplicated official (same model),official test,Frozen AST (10 s) + LR,Frozen AST (10 s) + LR,,,0.000650399432898352,-0.0157313762870996,0.012217858608554916,1,,False
