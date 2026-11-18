@@ -15,13 +15,14 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Leave-one-website-out (frozen AST + LR, recordings-matched): gap Aigei 0.057 [0.043, 0.072], Freesound 0.056 [0.035, 0.075] | `docs/results/website_holdout/` |
 | **GPU full fine-tuning 2x2 (Colab, FREEZE_K=0, 3 seeds): null.** contrastive -0.006 [-0.013, 0.002]; balanced +0.019 [-0.002, 0.038] | `docs/results/colab_k0_pc200/` |
 | Test embeddings cluster by recording: same-recording nearest neighbour 70-72% vs 7.6% chance, for all models, including contrastive | `docs/results/colab_k0_pc200/G9_*.csv` |
+| **CPU 2x2 (layer 11 only, 3 seeds): contrastive null -0.002 [-0.005, 0.002]; source-balanced +0.035 [0.012, 0.055] (significant)**; GPU shows the same direction for balanced (+0.019) but its CI touches 0 | `docs/results/cpu_k11_final/ast_2x2_effects.csv` |
+| Test errors cluster by recording: error ICC 0.27-0.36 (permutation p < 0.002), design effect about 2, effective test size about half, worst 10% of recordings hold about 80% of errors, clip-bootstrap CIs about 2x too narrow | `docs/results/error_clustering/` |
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
-## In progress when this was written
-- CPU 2x2 (layer 11 only, cached tokens) on the old laptop: 9 of 15 runs done (seeds 0-1; seed 2 running).
-  Interim per-run lines: `docs/results/cpu_k11_interim/ast_suite.log`. This run needs the token cache
-  (`results/v3/ast_cache`, 7 GB, not in git) and can only be finished on the old laptop, or redone with
-  `ast_finetune.py cache` (about 1-2 h CPU) and `run_ast_suite.sh`. It is a replication; the GPU run already answers the question.
+## In progress / ready to run
+- NEW DIRECTION (code ready, tested on CPU subset): `background_probe.py`, i.e. do models still classify vocalisations
+  when the vocalisation is cut out (background only), on unseen recordings? Run on Colab: `colab/MORNING_RUN.md`.
+- EXPLORATORY: recording-adversarial AST (`--adv`, `run_gpu_adv.sh`), also in `colab/MORNING_RUN.md`.
 
 ## How to run on a new machine
 ```bash

@@ -1,0 +1,246 @@
+system,true,pred,count,row_share
+AST frozen + linear head,breath,breath,326,0.8295165394402035
+AST frozen + linear head,breath,cough,5,0.01272264631043257
+AST frozen + linear head,breath,crying,11,0.027989821882951654
+AST frozen + linear head,breath,laugh,6,0.015267175572519083
+AST frozen + linear head,breath,screaming,3,0.007633587786259542
+AST frozen + linear head,breath,sneeze,16,0.04071246819338423
+AST frozen + linear head,breath,yawn,26,0.06615776081424936
+AST frozen + linear head,cough,breath,3,0.009345794392523364
+AST frozen + linear head,cough,cough,260,0.8099688473520249
+AST frozen + linear head,cough,crying,0,0.0
+AST frozen + linear head,cough,laugh,22,0.06853582554517133
+AST frozen + linear head,cough,screaming,2,0.006230529595015576
+AST frozen + linear head,cough,sneeze,24,0.07476635514018691
+AST frozen + linear head,cough,yawn,10,0.03115264797507788
+AST frozen + linear head,crying,breath,5,0.003940110323089046
+AST frozen + linear head,crying,cough,16,0.01260835303388495
+AST frozen + linear head,crying,crying,905,0.7131599684791174
+AST frozen + linear head,crying,laugh,132,0.10401891252955082
+AST frozen + linear head,crying,screaming,140,0.11032308904649331
+AST frozen + linear head,crying,sneeze,33,0.026004728132387706
+AST frozen + linear head,crying,yawn,38,0.029944838455476755
+AST frozen + linear head,laugh,breath,7,0.0071794871794871795
+AST frozen + linear head,laugh,cough,13,0.013333333333333334
+AST frozen + linear head,laugh,crying,68,0.06974358974358974
+AST frozen + linear head,laugh,laugh,851,0.8728205128205129
+AST frozen + linear head,laugh,screaming,25,0.02564102564102564
+AST frozen + linear head,laugh,sneeze,3,0.003076923076923077
+AST frozen + linear head,laugh,yawn,8,0.008205128205128205
+AST frozen + linear head,screaming,breath,2,0.009389671361502348
+AST frozen + linear head,screaming,cough,5,0.023474178403755867
+AST frozen + linear head,screaming,crying,16,0.07511737089201878
+AST frozen + linear head,screaming,laugh,8,0.03755868544600939
+AST frozen + linear head,screaming,screaming,169,0.7934272300469484
+AST frozen + linear head,screaming,sneeze,8,0.03755868544600939
+AST frozen + linear head,screaming,yawn,5,0.023474178403755867
+AST frozen + linear head,sneeze,breath,0,0.0
+AST frozen + linear head,sneeze,cough,6,0.038461538461538464
+AST frozen + linear head,sneeze,crying,0,0.0
+AST frozen + linear head,sneeze,laugh,0,0.0
+AST frozen + linear head,sneeze,screaming,0,0.0
+AST frozen + linear head,sneeze,sneeze,147,0.9423076923076923
+AST frozen + linear head,sneeze,yawn,3,0.019230769230769232
+AST frozen + linear head,yawn,breath,12,0.0784313725490196
+AST frozen + linear head,yawn,cough,0,0.0
+AST frozen + linear head,yawn,crying,0,0.0
+AST frozen + linear head,yawn,laugh,2,0.013071895424836602
+AST frozen + linear head,yawn,screaming,4,0.026143790849673203
+AST frozen + linear head,yawn,sneeze,0,0.0
+AST frozen + linear head,yawn,yawn,135,0.8823529411764706
+AST-FT ordinary,breath,breath,333,0.8473282442748091
+AST-FT ordinary,breath,cough,6,0.015267175572519083
+AST-FT ordinary,breath,crying,10,0.02544529262086514
+AST-FT ordinary,breath,laugh,2,0.005089058524173028
+AST-FT ordinary,breath,screaming,4,0.010178117048346057
+AST-FT ordinary,breath,sneeze,14,0.035623409669211195
+AST-FT ordinary,breath,yawn,24,0.061068702290076333
+AST-FT ordinary,cough,breath,3,0.009345794392523364
+AST-FT ordinary,cough,cough,261,0.8130841121495327
+AST-FT ordinary,cough,crying,1,0.003115264797507788
+AST-FT ordinary,cough,laugh,21,0.06542056074766354
+AST-FT ordinary,cough,screaming,2,0.006230529595015576
+AST-FT ordinary,cough,sneeze,24,0.07476635514018691
+AST-FT ordinary,cough,yawn,9,0.028037383177570093
+AST-FT ordinary,crying,breath,6,0.004728132387706856
+AST-FT ordinary,crying,cough,23,0.018124507486209612
+AST-FT ordinary,crying,crying,913,0.7194641449960599
+AST-FT ordinary,crying,laugh,122,0.09613869188337273
+AST-FT ordinary,crying,screaming,149,0.11741528762805359
+AST-FT ordinary,crying,sneeze,27,0.02127659574468085
+AST-FT ordinary,crying,yawn,29,0.022852639873916468
+AST-FT ordinary,laugh,breath,6,0.006153846153846154
+AST-FT ordinary,laugh,cough,12,0.012307692307692308
+AST-FT ordinary,laugh,crying,73,0.07487179487179488
+AST-FT ordinary,laugh,laugh,845,0.8666666666666667
+AST-FT ordinary,laugh,screaming,31,0.031794871794871796
+AST-FT ordinary,laugh,sneeze,2,0.0020512820512820513
+AST-FT ordinary,laugh,yawn,6,0.006153846153846154
+AST-FT ordinary,screaming,breath,1,0.004694835680751174
+AST-FT ordinary,screaming,cough,5,0.023474178403755867
+AST-FT ordinary,screaming,crying,9,0.04225352112676056
+AST-FT ordinary,screaming,laugh,7,0.03286384976525822
+AST-FT ordinary,screaming,screaming,180,0.8450704225352113
+AST-FT ordinary,screaming,sneeze,8,0.03755868544600939
+AST-FT ordinary,screaming,yawn,3,0.014084507042253521
+AST-FT ordinary,sneeze,breath,0,0.0
+AST-FT ordinary,sneeze,cough,6,0.038461538461538464
+AST-FT ordinary,sneeze,crying,0,0.0
+AST-FT ordinary,sneeze,laugh,0,0.0
+AST-FT ordinary,sneeze,screaming,0,0.0
+AST-FT ordinary,sneeze,sneeze,147,0.9423076923076923
+AST-FT ordinary,sneeze,yawn,3,0.019230769230769232
+AST-FT ordinary,yawn,breath,9,0.058823529411764705
+AST-FT ordinary,yawn,cough,0,0.0
+AST-FT ordinary,yawn,crying,1,0.006535947712418301
+AST-FT ordinary,yawn,laugh,2,0.013071895424836602
+AST-FT ordinary,yawn,screaming,4,0.026143790849673203
+AST-FT ordinary,yawn,sneeze,0,0.0
+AST-FT ordinary,yawn,yawn,137,0.8954248366013072
+AST-FT source-balanced,breath,breath,350,0.8905852417302799
+AST-FT source-balanced,breath,cough,3,0.007633587786259542
+AST-FT source-balanced,breath,crying,12,0.030534351145038167
+AST-FT source-balanced,breath,laugh,1,0.002544529262086514
+AST-FT source-balanced,breath,screaming,1,0.002544529262086514
+AST-FT source-balanced,breath,sneeze,15,0.03816793893129771
+AST-FT source-balanced,breath,yawn,11,0.027989821882951654
+AST-FT source-balanced,cough,breath,3,0.009345794392523364
+AST-FT source-balanced,cough,cough,261,0.8130841121495327
+AST-FT source-balanced,cough,crying,4,0.012461059190031152
+AST-FT source-balanced,cough,laugh,15,0.04672897196261682
+AST-FT source-balanced,cough,screaming,4,0.012461059190031152
+AST-FT source-balanced,cough,sneeze,27,0.08411214953271028
+AST-FT source-balanced,cough,yawn,7,0.021806853582554516
+AST-FT source-balanced,crying,breath,20,0.015760441292356184
+AST-FT source-balanced,crying,cough,18,0.014184397163120567
+AST-FT source-balanced,crying,crying,992,0.7817178881008668
+AST-FT source-balanced,crying,laugh,132,0.10401891252955082
+AST-FT source-balanced,crying,screaming,59,0.046493301812450746
+AST-FT source-balanced,crying,sneeze,19,0.014972419227738377
+AST-FT source-balanced,crying,yawn,29,0.022852639873916468
+AST-FT source-balanced,laugh,breath,10,0.010256410256410256
+AST-FT source-balanced,laugh,cough,17,0.017435897435897435
+AST-FT source-balanced,laugh,crying,91,0.09333333333333334
+AST-FT source-balanced,laugh,laugh,837,0.8584615384615385
+AST-FT source-balanced,laugh,screaming,14,0.014358974358974359
+AST-FT source-balanced,laugh,sneeze,1,0.0010256410256410256
+AST-FT source-balanced,laugh,yawn,5,0.005128205128205128
+AST-FT source-balanced,screaming,breath,0,0.0
+AST-FT source-balanced,screaming,cough,6,0.028169014084507043
+AST-FT source-balanced,screaming,crying,9,0.04225352112676056
+AST-FT source-balanced,screaming,laugh,5,0.023474178403755867
+AST-FT source-balanced,screaming,screaming,184,0.863849765258216
+AST-FT source-balanced,screaming,sneeze,8,0.03755868544600939
+AST-FT source-balanced,screaming,yawn,1,0.004694835680751174
+AST-FT source-balanced,sneeze,breath,0,0.0
+AST-FT source-balanced,sneeze,cough,7,0.04487179487179487
+AST-FT source-balanced,sneeze,crying,1,0.00641025641025641
+AST-FT source-balanced,sneeze,laugh,0,0.0
+AST-FT source-balanced,sneeze,screaming,0,0.0
+AST-FT source-balanced,sneeze,sneeze,148,0.9487179487179487
+AST-FT source-balanced,sneeze,yawn,0,0.0
+AST-FT source-balanced,yawn,breath,10,0.06535947712418301
+AST-FT source-balanced,yawn,cough,0,0.0
+AST-FT source-balanced,yawn,crying,3,0.0196078431372549
+AST-FT source-balanced,yawn,laugh,0,0.0
+AST-FT source-balanced,yawn,screaming,6,0.0392156862745098
+AST-FT source-balanced,yawn,sneeze,0,0.0
+AST-FT source-balanced,yawn,yawn,134,0.8758169934640523
+AST-FT cross-source contrastive,breath,breath,327,0.8320610687022901
+AST-FT cross-source contrastive,breath,cough,6,0.015267175572519083
+AST-FT cross-source contrastive,breath,crying,9,0.022900763358778626
+AST-FT cross-source contrastive,breath,laugh,2,0.005089058524173028
+AST-FT cross-source contrastive,breath,screaming,4,0.010178117048346057
+AST-FT cross-source contrastive,breath,sneeze,17,0.043256997455470736
+AST-FT cross-source contrastive,breath,yawn,28,0.07124681933842239
+AST-FT cross-source contrastive,cough,breath,3,0.009345794392523364
+AST-FT cross-source contrastive,cough,cough,261,0.8130841121495327
+AST-FT cross-source contrastive,cough,crying,0,0.0
+AST-FT cross-source contrastive,cough,laugh,21,0.06542056074766354
+AST-FT cross-source contrastive,cough,screaming,2,0.006230529595015576
+AST-FT cross-source contrastive,cough,sneeze,25,0.0778816199376947
+AST-FT cross-source contrastive,cough,yawn,9,0.028037383177570093
+AST-FT cross-source contrastive,crying,breath,5,0.003940110323089046
+AST-FT cross-source contrastive,crying,cough,23,0.018124507486209612
+AST-FT cross-source contrastive,crying,crying,911,0.7178881008668243
+AST-FT cross-source contrastive,crying,laugh,129,0.1016548463356974
+AST-FT cross-source contrastive,crying,screaming,146,0.11505122143420016
+AST-FT cross-source contrastive,crying,sneeze,26,0.02048857368006304
+AST-FT cross-source contrastive,crying,yawn,29,0.022852639873916468
+AST-FT cross-source contrastive,laugh,breath,6,0.006153846153846154
+AST-FT cross-source contrastive,laugh,cough,13,0.013333333333333334
+AST-FT cross-source contrastive,laugh,crying,68,0.06974358974358974
+AST-FT cross-source contrastive,laugh,laugh,850,0.8717948717948718
+AST-FT cross-source contrastive,laugh,screaming,30,0.03076923076923077
+AST-FT cross-source contrastive,laugh,sneeze,1,0.0010256410256410256
+AST-FT cross-source contrastive,laugh,yawn,7,0.0071794871794871795
+AST-FT cross-source contrastive,screaming,breath,1,0.004694835680751174
+AST-FT cross-source contrastive,screaming,cough,5,0.023474178403755867
+AST-FT cross-source contrastive,screaming,crying,11,0.051643192488262914
+AST-FT cross-source contrastive,screaming,laugh,7,0.03286384976525822
+AST-FT cross-source contrastive,screaming,screaming,178,0.8356807511737089
+AST-FT cross-source contrastive,screaming,sneeze,8,0.03755868544600939
+AST-FT cross-source contrastive,screaming,yawn,3,0.014084507042253521
+AST-FT cross-source contrastive,sneeze,breath,0,0.0
+AST-FT cross-source contrastive,sneeze,cough,7,0.04487179487179487
+AST-FT cross-source contrastive,sneeze,crying,0,0.0
+AST-FT cross-source contrastive,sneeze,laugh,0,0.0
+AST-FT cross-source contrastive,sneeze,screaming,0,0.0
+AST-FT cross-source contrastive,sneeze,sneeze,146,0.9358974358974359
+AST-FT cross-source contrastive,sneeze,yawn,3,0.019230769230769232
+AST-FT cross-source contrastive,yawn,breath,9,0.058823529411764705
+AST-FT cross-source contrastive,yawn,cough,0,0.0
+AST-FT cross-source contrastive,yawn,crying,1,0.006535947712418301
+AST-FT cross-source contrastive,yawn,laugh,2,0.013071895424836602
+AST-FT cross-source contrastive,yawn,screaming,4,0.026143790849673203
+AST-FT cross-source contrastive,yawn,sneeze,0,0.0
+AST-FT cross-source contrastive,yawn,yawn,137,0.8954248366013072
+AST-FT combined,breath,breath,347,0.8829516539440203
+AST-FT combined,breath,cough,3,0.007633587786259542
+AST-FT combined,breath,crying,12,0.030534351145038167
+AST-FT combined,breath,laugh,1,0.002544529262086514
+AST-FT combined,breath,screaming,1,0.002544529262086514
+AST-FT combined,breath,sneeze,14,0.035623409669211195
+AST-FT combined,breath,yawn,15,0.03816793893129771
+AST-FT combined,cough,breath,3,0.009345794392523364
+AST-FT combined,cough,cough,267,0.8317757009345794
+AST-FT combined,cough,crying,5,0.01557632398753894
+AST-FT combined,cough,laugh,13,0.040498442367601244
+AST-FT combined,cough,screaming,3,0.009345794392523364
+AST-FT combined,cough,sneeze,22,0.06853582554517133
+AST-FT combined,cough,yawn,8,0.024922118380062305
+AST-FT combined,crying,breath,18,0.014184397163120567
+AST-FT combined,crying,cough,21,0.016548463356973995
+AST-FT combined,crying,crying,1001,0.7888100866824271
+AST-FT combined,crying,laugh,116,0.09141055949566587
+AST-FT combined,crying,screaming,65,0.0512214342001576
+AST-FT combined,crying,sneeze,18,0.014184397163120567
+AST-FT combined,crying,yawn,30,0.02364066193853428
+AST-FT combined,laugh,breath,11,0.011282051282051283
+AST-FT combined,laugh,cough,19,0.019487179487179488
+AST-FT combined,laugh,crying,99,0.10153846153846154
+AST-FT combined,laugh,laugh,822,0.8430769230769231
+AST-FT combined,laugh,screaming,16,0.01641025641025641
+AST-FT combined,laugh,sneeze,3,0.003076923076923077
+AST-FT combined,laugh,yawn,5,0.005128205128205128
+AST-FT combined,screaming,breath,0,0.0
+AST-FT combined,screaming,cough,5,0.023474178403755867
+AST-FT combined,screaming,crying,8,0.03755868544600939
+AST-FT combined,screaming,laugh,4,0.018779342723004695
+AST-FT combined,screaming,screaming,185,0.8685446009389671
+AST-FT combined,screaming,sneeze,8,0.03755868544600939
+AST-FT combined,screaming,yawn,3,0.014084507042253521
+AST-FT combined,sneeze,breath,0,0.0
+AST-FT combined,sneeze,cough,7,0.04487179487179487
+AST-FT combined,sneeze,crying,1,0.00641025641025641
+AST-FT combined,sneeze,laugh,0,0.0
+AST-FT combined,sneeze,screaming,0,0.0
+AST-FT combined,sneeze,sneeze,148,0.9487179487179487
+AST-FT combined,sneeze,yawn,0,0.0
+AST-FT combined,yawn,breath,7,0.0457516339869281
+AST-FT combined,yawn,cough,0,0.0
+AST-FT combined,yawn,crying,2,0.013071895424836602
+AST-FT combined,yawn,laugh,0,0.0
+AST-FT combined,yawn,screaming,6,0.0392156862745098
+AST-FT combined,yawn,sneeze,0,0.0
+AST-FT combined,yawn,yawn,138,0.9019607843137255
