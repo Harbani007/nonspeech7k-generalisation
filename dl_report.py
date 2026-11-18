@@ -18,7 +18,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from dl_data import CLASSES  # noqa: E402
-from dl_metrics import confusion, grouped_bootstrap, metrics  # noqa: E402
+from dl_metrics import confusion, grouped_bootstrap, metrics, source_nn_rate  # noqa: E402
 
 K = len(CLASSES)
 SYSTEMS = [  # (label, run-folder glob relative to runs, role)
@@ -311,36 +311,36 @@ def ast_2x2(a, preds_cache):
         x.legend(fontsize=7)
     save(fig, a.out, "G1_G2_learning_curves_ast_2x2", H)
 
+    # source-clustering diagnostic (dl_metrics.source_nn_rate): test partition only, same-class reference pool,
+    # self excluded, duplicates count as the same source. Frozen AST (pretrained encoder, untouched) is the reference.
     rows = []
-    for s in AST4:
-        for d in sorted(glob.glob(os.path.join(a.runs, pats[s]))):
+    systems9 = ["AST frozen + linear head"] + AST4
+    pats9 = dict(pats, **{"AST frozen + linear head": "ast_frozen_source_disjoint_standard_s*"})
+    cols9 = dict(cols, **{"AST frozen + linear head": "#999999"})
+    for s in systems9:
+        for d in sorted(glob.glob(os.path.join(a.runs, pats9[s]))):
             e = os.path.join(d, "test_embeddings.npy")
-            if not os.path.exists(e):
+            if not os.path.exists(e) or not os.path.exists(os.path.join(d, "test_metrics.json")):
                 continue
-            E = np.load(e).astype(np.float32)
-            E /= np.linalg.norm(E, axis=1, keepdims=True)
-            same, chance = [], []
-            for k in range(K):
-                ix = np.where(y == k)[0]
-                S = E[ix] @ E[ix].T
-                np.fill_diagonal(S, -np.inf)
-                same.append(g[ix[S.argmax(1)]] == g[ix])
-                gg = g[ix]
-                chance.append([(np.sum(gg == gg[i]) - 1) / (len(ix) - 1) for i in range(len(ix))])
-            rows.append(dict(system=s, run=os.path.basename(d), same_source_nn_rate=float(np.mean(np.concatenate(same))),
-                             chance_rate=float(np.mean(np.concatenate(chance)))))
+            tp = pd.read_csv(os.path.join(d, "test_predictions.csv"))
+            assert (tp.filename.values == f0.filename.values).all()
+            rows.append(dict(system=s, run=os.path.basename(d), **source_nn_rate(np.load(e), y, g)))
     if rows:
         R = pd.DataFrame(rows)
-        agg = R.groupby("system", sort=False).same_source_nn_rate.agg(["mean", "std", "count"]).reindex(AST4)
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.bar(range(4), agg["mean"], yerr=agg["std"].fillna(0), color=[cols[s] for s in AST4], capsize=3)
-        ax.axhline(R.chance_rate.iloc[0], color="k", ls="--", lw=1, label="chance (random same-class neighbour)")
-        ax.set_xticks(range(4), [x.replace("AST-FT ", "") for x in AST4])
+        systems9 = [s for s in systems9 if s in set(R.system)]
+        agg = R.groupby("system", sort=False)[["rate", "rate_eligible"]].agg(["mean", "std", "count"]).reindex(systems9)
+        agg.columns = ["_".join(c) for c in agg.columns]
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.bar(range(len(systems9)), agg["rate_mean"], yerr=agg["rate_std"].fillna(0), color=[cols9[s] for s in systems9], capsize=3)
+        ax.axhline(R.chance.iloc[0], color="k", ls="--", lw=1, label="chance (random same-class neighbour)")
+        ax.set_xticks(range(len(systems9)), [x.replace("AST-FT ", "").replace(" + linear head", "") for x in systems9])
+        agg = agg.rename(columns={"rate_mean": "mean", "rate_std": "std"})
         ax.set(ylabel="within-class nearest neighbour\nfrom the same source", ylim=(0, 1),
                title="Source clustering of test embeddings (lower = less source-specific)")
         ax.legend(fontsize=8)
         save(fig, a.out, "G9_source_clustering_of_embeddings", R)
-        print("\nsource clustering (same-source within-class NN rate; chance %.3f):\n" % R.chance_rate.iloc[0],
+        print("\nsource clustering (same-source within-class NN rate; chance %.3f, eligible-clip chance %.3f, "
+              "%d of %d test clips eligible):\n" % (R.chance.iloc[0], R.chance_eligible.iloc[0], R.n_eligible.iloc[0], R.n.iloc[0]),
               agg.round(3).to_string())
 
 
