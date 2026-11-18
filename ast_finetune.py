@@ -223,6 +223,19 @@ def acquire_lock(out):
     return lock
 
 
+class GradReverse(torch.autograd.Function):
+    """Identity in the forward pass; multiplies the gradient by -coef in the backward pass (Ganin & Lempitsky 2015)."""
+
+    @staticmethod
+    def forward(ctx, x, coef):
+        ctx.coef = coef
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, g):
+        return -ctx.coef * g, None
+
+
 def batch_pair_stats(yb, gb):
     """Cross-source positive pairs (ordered, i != j) and share of anchors with at least one."""
     pos = (yb[:, None] == yb[None, :]) & (gb[:, None] != gb[None, :])
@@ -260,6 +273,12 @@ def _train(a, lock):
     torch.manual_seed(a.seed)  # same new-head initialisation for every condition at a given seed
     model = ASTTop(ast, a.freeze_k, len(CLASSES))
     proj = nn.Sequential(nn.Linear(768, 768), nn.ReLU(), nn.Linear(768, a.proj_dim))  # built in every condition
+    adv_head = None
+    if a.adv > 0:  # recording-identity adversary; RNG state restored so dropout streams match the other conditions
+        rng_state = torch.get_rng_state()
+        tr_groups = sorted(set(info.group.values[pos["train"]]))
+        adv_head = nn.Sequential(nn.Linear(768, 768), nn.ReLU(), nn.Linear(768, len(tr_groups)))
+        torch.set_rng_state(rng_state)
     for p in model.parameters():
         p.requires_grad = a.mode == "finetune"
     for p in model.head.parameters():
@@ -274,7 +293,8 @@ def _train(a, lock):
     n_tr = sum(p.numel() for p in model.parameters() if p.requires_grad)
     n_frozen = sum(p.numel() for p in ast.parameters()) + sum(p.numel() for p in model.head.parameters()) - n_tr
     groups = [{"params": enc, "lr": a.lr},
-              {"params": list(model.head.parameters()) + (list(proj.parameters()) if a.supcon > 0 else []), "lr": a.head_lr}]
+              {"params": list(model.head.parameters()) + (list(proj.parameters()) if a.supcon > 0 else [])
+               + (list(adv_head.parameters()) if adv_head is not None else []), "lr": a.head_lr}]
     groups = [g for g in groups if g["params"]]
     opt = torch.optim.AdamW(groups, weight_decay=a.wd)
     steps_per_epoch = a.samples_per_epoch // a.batch
@@ -283,6 +303,11 @@ def _train(a, lock):
     dtr = info.iloc[pos["train"]].reset_index(drop=True)
     w = sample_weights(dtr, a.sampler)
     gid = torch.tensor(pd.factorize(info.group.values)[0], dtype=torch.long)  # sources.py groups, duplicates merged
+    if adv_head is not None:
+        gmap = {gname: i for i, gname in enumerate(tr_groups)}
+        adv_y = torch.tensor([gmap.get(x, -100) for x in info.group.values], dtype=torch.long)
+        adv_head.to(dev)
+        total_steps = a.epochs * steps_per_epoch
     gen = torch.Generator().manual_seed(1000 + a.seed)
     w_before = {n: p.detach().clone() for n, p in model.named_parameters() if not n.startswith("head")}
 
@@ -295,6 +320,8 @@ def _train(a, lock):
         if {k: v for k, v in st["args"].items() if k not in ("device", "amp", "inputs")} !=                 {k: v for k, v in run_args.items() if k not in ("device", "amp", "inputs")}:
             raise SystemExit(f"{last} was written with different arguments; refusing to resume:\n{st['args']}\n{run_args}")
         model.load_state_dict(st["model"]); proj.load_state_dict(st["proj"])
+        if adv_head is not None:
+            adv_head.load_state_dict(st["adv_head"])
         opt.load_state_dict(st["opt"]); sched.load_state_dict(st["sched"])
         gen.set_state(st["gen"].cpu()); torch.set_rng_state(st["torch_rng"].cpu())
         if "scaler" in st:
@@ -333,7 +360,7 @@ def _train(a, lock):
         model.train()
         draw = torch.multinomial(w, steps_per_epoch * a.batch, replacement=True, generator=gen).numpy()
         seen.append(draw)
-        tot = ce_tot = sc_tot = 0.0
+        tot = ce_tot = sc_tot = adv_tot = adv_acc_tot = 0.0
         ep_steps = []
         for s in range(steps_per_epoch):
             b = draw[s * a.batch:(s + 1) * a.batch]
@@ -344,6 +371,10 @@ def _train(a, lock):
                 emb = model.pooled(tokens(ib))
                 logits = model.head(emb)
                 zp = proj(emb) if a.supcon > 0 else None
+                if adv_head is not None:
+                    progress = ((ep - 1) * steps_per_epoch + s) / total_steps
+                    coef = a.adv * (2.0 / (1.0 + np.exp(-10.0 * progress)) - 1.0)  # DANN ramp 0 -> adv
+                    adv_logits = adv_head(GradReverse.apply(emb, coef))
             ce = F.cross_entropy(logits.float(), yb)
             n_pairs, frac = batch_pair_stats(yb, gb)
             sc = None
@@ -351,6 +382,12 @@ def _train(a, lock):
                 sc, frac_used = cross_source_supcon(F.normalize(zp.float(), dim=1), yb, gb, a.tau)
                 assert abs(frac_used - frac) < 1e-6
             loss = ce if sc is None else ce + a.supcon * sc
+            adv_loss = None
+            if adv_head is not None:
+                ab = adv_y[ib].to(dev)
+                adv_loss = F.cross_entropy(adv_logits.float(), ab)  # gradient reversal is inside the graph
+                loss = loss + adv_loss
+                adv_acc = float((adv_logits.argmax(1) == ab).float().mean())
             rec = dict(epoch=ep, step=s, ce=ce.item(), supcon=sc.item() if sc is not None else np.nan,
                        loss=loss.item(), cross_source_pairs=n_pairs, anchors_with_positive=frac)
             opt.zero_grad()
@@ -369,6 +406,8 @@ def _train(a, lock):
             rec["enc_grad_norm"] = gnorm(enc)
             rec["head_grad_norm"] = gnorm(model.head.parameters())
             rec["proj_grad_norm"] = gnorm(proj.parameters())
+            if adv_loss is not None:
+                rec.update(adv_loss=adv_loss.item(), adv_acc=adv_acc, adv_coef=coef)
             if s == 0 and a.mode == "finetune":
                 gn = {ast_name(n, a.freeze_k): float(p.grad.norm()) for n, p in model.named_parameters() if p.grad is not None}
                 grad_log.append(dict(epoch=ep, **{k: v for k, v in gn.items() if "ast_layer" in k and k.endswith(("query.weight", "q_proj.weight", "dense.weight", "fc1.weight", "fc2.weight"))}))
@@ -376,6 +415,8 @@ def _train(a, lock):
             scaler.update()
             sched.step()
             tot += loss.item(); ce_tot += ce.item(); sc_tot += rec["supcon"] if sc is not None else 0.0
+            if adv_loss is not None:
+                adv_tot += adv_loss.item(); adv_acc_tot += adv_acc
             ep_steps.append(rec)
             os.utime(lock)
             if s % 8 == 0:
@@ -389,7 +430,8 @@ def _train(a, lock):
         vloss = float(F.nll_loss(torch.log(torch.from_numpy(pv) + 1e-9), torch.from_numpy(yv)))
         m = metrics(yv, pv.argmax(1), len(CLASSES))
         hist.append(dict(epoch=ep, train_loss=tot / steps_per_epoch, train_ce=ce_tot / steps_per_epoch,
-                         train_supcon=sc_tot / steps_per_epoch, anchors_with_positive=E.anchors_with_positive.mean(),
+                         train_supcon=sc_tot / steps_per_epoch, train_adv=adv_tot / steps_per_epoch,
+                         adv_recording_acc=adv_acc_tot / steps_per_epoch, anchors_with_positive=E.anchors_with_positive.mean(),
                          cross_source_pairs_per_batch=E.cross_source_pairs.mean(), enc_grad_norm=E.enc_grad_norm.mean(),
                          val_loss=vloss, val_acc=m["accuracy"], val_macro_f1=m["macro_f1"],
                          val_bal_acc=m["balanced_accuracy"], elapsed_s=time.time() - t0))
@@ -402,6 +444,7 @@ def _train(a, lock):
                              mode=a.mode, classes=CLASSES, ckpt=CKPT, max_len=MAX_LEN, epoch=ep, args=vars(a)),
                         os.path.join(a.out, "best.pt"))
         atomic_save(dict(model=model.state_dict(), proj=proj.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(),
+                         adv_head=adv_head.state_dict() if adv_head is not None else None,
                          gen=gen.get_state(), torch_rng=torch.get_rng_state(), scaler=scaler.state_dict(), hist=hist, best=best, seen=seen,
                          grad_log=grad_log, step_log=step_log, epoch=ep, args=run_args), last)
     pd.DataFrame(hist).to_csv(os.path.join(a.out, "history.csv"), index=False)
@@ -469,6 +512,8 @@ def main():
     t.add_argument("--supcon", type=float, default=0.0, help="weight of the cross-source contrastive term (0 = off)")
     t.add_argument("--tau", type=float, default=0.1)
     t.add_argument("--proj-dim", type=int, default=128)
+    t.add_argument("--adv", type=float, default=0.0,
+                   help="EXPLORATORY: max weight of a recording-identity adversary (gradient reversal, DANN ramp); 0 = off")
     t.add_argument("--inputs", choices=["cache", "fbank"], default="cache",
                    help="cache: tokens after frozen layers 0..K-1 (CPU plan); fbank: AST filterbanks, layers run live (GPU)")
     t.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
