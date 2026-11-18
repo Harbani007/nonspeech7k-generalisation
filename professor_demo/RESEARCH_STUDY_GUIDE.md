@@ -678,7 +678,45 @@ that neighbour comes from the *same recording*.
   recording-encoding embedding scores 1.0 and random embeddings score at chance.
 - If the contrastive loss works as intended, this rate should fall for the contrastive models.
 
-## 13.5 Results  🏃 PENDING: filled in when the runs finish (no number here before that)
+## 13.5 Results
+
+### A. Full fine-tuning on a GPU (Colab, all 12 layers) ✅ VERIFIED, 3 seeds
+Settings: FREEZE_K = 0 (all 12 transformer layers trained; patch embeddings frozen), 200 training clips per class,
+4 epochs x 768 samples, batch 32, lambda 0.5, tau 0.1, fp16. Files: `../../results/v3/colab_k0_pc200/`.
+
+| Condition | test macro-F1 [95% CI] |
+|---|---|
+| ordinary | 0.816 [0.766, 0.856] |
+| source-balanced | 0.837 [0.789, 0.870] |
+| cross-source contrastive | 0.812 [0.765, 0.849] |
+| combined | 0.830 [0.778, 0.867] |
+
+| Effect (pre-registered) | estimate [95% CI] | supported? |
+|---|---|---|
+| H1 contrastive main effect | -0.006 [-0.013, +0.002] | **no** |
+| H2 source-balanced main effect | +0.019 [-0.002, +0.038] | **no** (CI just touches 0: suggestive only) |
+| H3 interaction | -0.003 [-0.020, +0.013] | no |
+| combined - ordinary | +0.014 [-0.009, +0.034] | no |
+
+**In plain words:** with all 12 layers fine-tuned, neither source-aware idea produced a detectable improvement on unseen
+recordings. Balanced sampling points upward (+2 points) but its interval includes zero. The contrastive term is close to
+zero, if anything slightly negative. Per the pre-registered rule this is a **null result at this budget**.
+
+**Mechanism check (source clustering, G9):** a test clip's nearest same-class neighbour comes from its own recording
+**70-72% of the time, against 7.6% by chance**, for every model: frozen 0.720, ordinary 0.705-0.716, balanced
+0.698-0.711, contrastive 0.708-0.722, combined 0.702-0.710. So:
+1. the AST representation strongly encodes *which recording* a clip came from, even for recordings never seen in training;
+2. fine-tuning, with or without the contrastive term, barely changes that. The contrastive loss was active (its training
+   loss fell from about 2.3 to 1.5, and about 98% of anchors had a cross-source positive), but it did not remove recording
+   identity from the representation of *new* recordings.
+The frozen model gives the same rate for all 3 seeds, as it must: its encoder is untouched and only the head differs.
+That's a built-in sanity check.
+
+Per website (descriptive only, no CI): Aigei 0.780-0.802, Freesound 0.813-0.849. YouTube has only one test source,
+so its numbers mean nothing.
+
+### B. CPU experiment (layer 11 only) 🏃 seeds 1-2 still running; filled in when finished
+
 
 ---
 
@@ -696,7 +734,11 @@ that neighbour comes from the *same recording*.
    0.056 [0.035, 0.075]), with everything else matched. I retracted my earlier claim that AST is less robust than handcrafted features.
 6. I fine-tuned a pretrained AST (last transformer layer + new head, 7.1 M weights; gradients and weight changes are logged)
    and tested source-balanced sampling and a cross-source contrastive loss in a controlled 2 x 2 design, pre-registered.
-   **Result: PENDING (filled in from `ast_2x2_effects.csv` once the runs finish).**
+   **Result (full fine-tuning on GPU, 3 seeds): no detectable effect.** Contrastive -0.006 [-0.013, +0.002];
+   source-balanced +0.019 [-0.002, +0.038]; neither interval excludes zero. A null result, reported as pre-registered.
+7. Fine-tuned AST embeddings still cluster by recording: a test clip's nearest same-class neighbour is from its own
+   recording 70-72% of the time vs 7.6% chance, and the contrastive loss did not change this. That explains *why* it did not
+   help, and it is itself a finding about how strongly recording identity is encoded.
 
 ## 2. Evidence files
 | Claim | File |
@@ -722,8 +764,9 @@ inference time. `LIVE_TRAINING_DEMO.ipynb` shows one training step by hand (forw
 weights changing) and the logged AST gradient evidence.
 
 ## 4. Limitations (say these before being asked)
-- CPU only: one transformer layer fine-tuned, 200 training clips per class, 4 short epochs, 3 seeds. A GPU version for
-  full fine-tuning is ready (`../colab/`) but **not run**.
+- Small budget: 200 training clips per class, 4 short epochs, 3 seeds, one lambda/tau setting (fixed in advance, not tuned).
+  Full fine-tuning was run on a Colab GPU; the laptop run trains only layer 11.
+- A null result at this budget does not show the idea can never work (more data, a larger lambda or longer training are untested).
 - The contrastive loss is an application of known cross-domain contrastive learning, not a new loss.
 - Sources are *reconstructed* from filenames; uploader identity is unknown, so some different "sources" may be the same person or device.
 - Duplicate search only finds near-identical audio that AST already embeds closely; heavily edited copies can be missed.
@@ -742,7 +785,7 @@ weights changing) and the logged AST gradient evidence.
 6. *Is this full fine-tuning?* No: the last transformer layer + LayerNorm + head (7.1 M weights) on CPU. The GPU notebook can train all 12 layers.
 7. *Did you tune on the test set?* No. Lambda, tau and the budget were fixed and committed before the runs; checkpoints are chosen on validation.
 8. *Is the method novel?* No as a loss (Kim et al. ICASSP 2024; bird-sound work). The defensible contribution is the measurement plus a controlled, falsifiable test.
-9. *What if it doesn't help?* Then I report a null result: at this budget, explicitly ignoring recording identity does not improve unseen-recording accuracy.
+9. *Did it work?* No detectable gain: contrastive -0.006 [-0.013, +0.002], balanced +0.019 [-0.002, +0.038]. And the diagnostic shows why: the embeddings of unseen recordings still cluster by recording 70% of the time, with or without the loss.
 10. *What next?* Full fine-tuning on GPU, more seeds, a cross-corpus test (e.g. VocalSound), and per-website analysis of the contrastive models.
 
 ---
