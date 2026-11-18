@@ -128,6 +128,14 @@ def cmd_cache(a):
     print("done", path)
 
 
+def ast_name(n, k):
+    """'layers.0.mlp.fc1.weight' inside ASTTop is pretrained AST layer k+0: report it as 'ast_layer_11.mlp...'."""
+    if n.startswith("layers."):
+        i, rest = n[len("layers."):].split(".", 1)
+        return f"ast_layer_{k + int(i)}.{rest}"
+    return n
+
+
 def cmd_train(a):
     os.makedirs(a.out, exist_ok=True)
     torch.manual_seed(a.seed)
@@ -137,7 +145,7 @@ def cmd_train(a):
     assert int(open(os.path.join(a.cache, f"tokens_k{a.freeze_k}.f16.done")).read()) == len(clips), "cache incomplete"
     info = sp.iloc[clips.row.values].reset_index(drop=True)
     pos = {p: np.where(clips.part.values == p)[0] for p in ("train", "val", "test")}
-    y = torch.from_numpy(info.y.values).long()
+    y = torch.tensor(info.y.values, dtype=torch.long)
 
     _, ast = load_ast()
     torch.manual_seed(a.seed)  # same new-head initialisation for every sampler at a given seed
@@ -186,8 +194,8 @@ def cmd_train(a):
             opt.zero_grad()
             loss.backward()
             if s == 0 and a.mode == "finetune":
-                gn = {n: float(p.grad.norm()) for n, p in model.named_parameters() if p.grad is not None}
-                grad_log.append(dict(epoch=ep, **{k: v for k, v in gn.items() if "layers" in k and k.endswith(("query.weight", "q_proj.weight", "dense.weight", "fc1.weight", "fc2.weight"))}))
+                gn = {ast_name(n, a.freeze_k): float(p.grad.norm()) for n, p in model.named_parameters() if p.grad is not None}
+                grad_log.append(dict(epoch=ep, **{k: v for k, v in gn.items() if "ast_layer" in k and k.endswith(("query.weight", "q_proj.weight", "dense.weight", "fc1.weight", "fc2.weight"))}))
             opt.step()
             sched.step()
             tot += loss.item()
@@ -211,7 +219,7 @@ def cmd_train(a):
         pd.DataFrame(grad_log).to_csv(os.path.join(a.out, "grad_norms.csv"), index=False)
 
     # how far did the pretrained weights move?
-    drift = {n: float((p.detach() - w_before[n]).norm() / (w_before[n].norm() + 1e-12))
+    drift = {ast_name(n, a.freeze_k): float((p.detach() - w_before[n]).norm() / (w_before[n].norm() + 1e-12))
              for n, p in model.named_parameters() if n in w_before}
     ck = torch.load(os.path.join(a.out, "best.pt"), weights_only=False)
     model.load_state_dict(ck["state_dict"])

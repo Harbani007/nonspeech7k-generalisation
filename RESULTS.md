@@ -85,6 +85,10 @@ the initial guess of 6 dB / 0.08 s (0.371 vs 0.334, SE 0.031). The test set was 
 
 ## 6. Leave-one-website-out (added after the first run)
 
+> **Superseded (18 Nov, see section 7).** The grouping used here still merged unrelated recordings: Aigei File_IDs
+> are counters that restart for every filename family, so '79-cough-aigei', '79-sneeze-aigei' and Freesound sound 79
+> were one group (97 groups mixed classes). The numbers below are kept as a record and must not be cited.
+
 `website_holdout.py`. For each website W, W's sources are split into 5 source-disjoint folds. Each fold is
 classified by a model trained without W ("holdout") and by a control trained with W's *other* sources
 ("control"). Neither ever sees the test sources. Classes with fewer than 5 sources in W are not scored.
@@ -133,3 +137,43 @@ clip-matched gap is source diversity, but not all of it.
 - Sections 1-5 used File_ID groups. Their recording-disjoint numbers should be re-run with corrected groups.
 - Exploratory note: earlier checks (section 3 and a residual-correction test) looked at the official test set;
   later method choices should use source-disjoint validation only.
+
+## 7. Corrected source identity and duplicate audit (v3, 18 Nov)
+
+Code: `sources.py` (tested in `tests/test_sources.py`), `find_duplicates.py`, `source_audit.py`. Outputs:
+`results/v3/` (`source_manifest.csv`, `duplicates.csv`, `groupings_and_leakage.csv`, `source_concentration_*.csv`,
+`figures/A1-A4`).
+
+**Source keys.** Freesound File_ID = Freesound sound ID; YouTube File_ID = video ID (recovered in full from the
+filename when truncated); Aigei '<n>=<key>-<k>' names give the source (11-character YouTube IDs share the `yt:`
+namespace with the YouTube website; numeric keys that may be Freesound IDs are kept separate unless audio confirms
+it); other Aigei File_IDs are namespaced by filename family. Every clip carries the rule that produced its key and a
+known/inferred flag.
+
+| Grouping | groups | groups that mix classes | official test clips sharing a group with train |
+|---|---|---|---|
+| File_ID as published | 2,304 | 97 | 32 (4.4%) |
+| File_ID, collision-free | 2,475 | 4 | 29 (4.0%) |
+| reconstructed source | 1,586 | 4 | 29 (4.0%) |
+| source + confirmed duplicates | 1,503 | 5 | **52 (7.2%)** |
+
+- Earlier counts of "2,304 -> 1,398 groups" and "6 shared test recordings" were both distorted by ID collisions.
+  The historical Aigei crying figures reproduce: 958 clips, 70 sources, 376 clips from `yt:KKKId0LDwVc`.
+- One YouTube video (`5StJa6Ia6bI`) is both a YouTube-website source and the source of 46 Aigei clips: a
+  cross-website source link visible only through filename IDs.
+- Concentration: breath has 1,850 clips but an effective number of sources (inverse Simpson) of 4.6; 827 breath
+  clips come from one video. Crying: 1,055 published File_IDs, 166 sources, effective number 20.
+
+**Duplicates.** Top-5 AST neighbours from other sources with cosine >= 0.95, confirmed by peak normalised waveform
+cross-correlation over all lags (all clips are 32 kHz mono, checked) >= 0.9:
+
+- 277 candidates -> **137 confirmed**, 31 uncertain (0.6 <= xcorr < 0.9, kept apart, never merged), 109 rejected.
+- Confirmed: 53 cross-website, **23 cross the official train/test split**, 2 with conflicting labels
+  (`228-cough-aigei` matches two Aigei sneeze clips), 0 bit-identical. 22 are time-shifted by > 100 ms and 28
+  differ in length, so exact-hash or zero-lag checks would miss them.
+- Control: 500 random same-class different-source pairs never exceed xcorr 0.41 (99th percentile 0.22), so the
+  0.9 threshold produced no false positives in this control.
+- Sensitivity (`duplicates_sensitivity.csv`): confirmed pairs range from 79 (cosine 0.99) to 160 (cosine 0.95,
+  xcorr 0.7); cross-split pairs stay between 21 and 24 under every setting. The old top-1 / 0.98 rule finds 102.
+- Limitation: recall is bounded by AST screening; duplicates whose embeddings differ more than cosine 0.95 (heavy
+  re-encoding, partial overlaps) are not searched.
