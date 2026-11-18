@@ -93,6 +93,8 @@ def main():
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--out", default="website_holdout.csv")
     ap.add_argument("--duplicates", help="CSV of clip pairs (columns a, b, same_audio) whose groups are merged")
+    ap.add_argument("--save-preds", action="store_true",
+                    help="also write <out>_predictions.csv: every test clip x seed x condition x feature set")
     a = ap.parse_args()
 
     meta = load_meta(a.meta_train, a.meta_test)  # pooled: the official split plays no role here
@@ -113,7 +115,7 @@ def main():
             return {c: len(np.unique(g[tr][y[tr] == c])) for c in np.unique(y[tr])}
         return {c: int((y[tr] == c).sum()) for c in np.unique(y[tr])}
 
-    summary, per_class, diffs = [], [], []
+    summary, per_class, diffs, all_preds = [], [], [], []
     for w in sorted(set(src)):
         other = np.where(src != w)[0]
         ok = [c for c in names.index if recs.get((w, c), 0) >= a.min_recs
@@ -125,11 +127,12 @@ def main():
         test_pool = np.where((src == w) & np.isin(y, ok))[0]
         yt, rt = y[test_pool], g[test_pool]
         P = {(s, k): np.empty((a.seeds, len(test_pool)), int) for s in a.sets for k in ("control", "holdout")}
-        log = []
+        log, fold_store = [], []
         for seed in range(a.seeds):
             rng = np.random.default_rng(seed)
             fold_of = {r: i % 5 for i, r in enumerate(rng.permutation(np.unique(rt)))}
             folds = np.array([fold_of[r] for r in rt])
+            fold_store.append(folds)
             for f in range(5):
                 te = test_pool[folds == f]
                 keep = ~np.isin(g, g[te])  # never train on a test recording, even across websites
@@ -143,6 +146,13 @@ def main():
                         Xtr, Xte = prep([b[tr] for b in blocks[s]], [b[te] for b in blocks[s]])
                         P[(s, k)][seed, folds == f] = fit_predict(Xtr, y[tr], g[tr], Xte, True)
             print(f"  seed {seed} done", flush=True)
+        if a.save_preds:
+            for (s_, k_), arr in P.items():
+                for seed in range(a.seeds):
+                    all_preds.append(pd.DataFrame(dict(
+                        heldout=w, featureset=s_, condition=k_, seed=seed, fold=fold_store[seed],
+                        filename=meta["filename"].values[test_pool], group=rt, y=yt, pred=arr[seed],
+                        scored_class=True)))
         lg = pd.DataFrame(log).mean()
         print(f"  training size {lg.n:.0f}; distinct recordings holdout {lg.recs_h:.0f} / control {lg.recs_c:.0f}; "
               f"share of {w} clips in control training {lg.w_share_control:.2f}")
@@ -186,6 +196,8 @@ def main():
     pc.to_csv(a.out.replace(".csv", "_per_class.csv"), index=False)
     dd = pd.DataFrame(diffs)
     dd.to_csv(a.out.replace(".csv", "_gap_diffs.csv"), index=False)
+    if a.save_preds:
+        pd.concat(all_preds).to_csv(a.out.replace(".csv", "_predictions.csv.gz"), index=False)
     pd.set_option("display.width", 200)
     print(f"\nmacro-F1 over scored classes ({a.match} matched), mean over {a.seeds} seeds; "
           f"95% CI from a bootstrap over test recordings")
