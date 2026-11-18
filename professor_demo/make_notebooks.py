@@ -27,8 +27,10 @@ demo.cells = [
     md("# Live deep-learning demo: Nonspeech7k vocalisation recognition\n\n"
        "Every number below is computed live from real audio and saved checkpoints; nothing is hard-coded.\n\n"
        "* **CNN**: log-mel CNN trained from scratch (`train_cnn.py`).\n"
-       "* **AST**: pretrained Audio Spectrogram Transformer (`MIT/ast-finetuned-audioset-10-10-0.4593`) with its "
-       "last transformer block fine-tuned and a new 7-class head (`ast_finetune.py`).\n\n"
+       "* **AST, ordinary fine-tuning**: pretrained Audio Spectrogram Transformer (`MIT/ast-finetuned-audioset-10-10-0.4593`) "
+       "with its last transformer block fine-tuned and a new 7-class head, cross-entropy only (`ast_finetune.py`).\n"
+       "* **AST, combined source-aware training**: same model and budget, trained with source-balanced sampling plus a "
+       "cross-source supervised contrastive term (positives = same class, different recording source).\n\n"
        "Test clips are drawn from the **source-disjoint test partition**: no recording they were cut from "
        "(and no duplicated copy of it) was seen in training or validation.\n\n"
        "Scores shown are **raw softmax outputs, not calibrated probabilities**."),
@@ -59,29 +61,42 @@ s_cnn, t_cnn = cnn.predict(wave)
 print(f"CNN prediction: {CLASSES[s_cnn.argmax()]} (true: {row.cls}) | inference {1000*t_cnn:.1f} ms")
 pd.Series(s_cnn, index=CLASSES).round(3).rename("raw softmax score").to_frame()'''),
     md("## 5. Fine-tuned AST inference"),
-    code(r'''ast_ck = RESULTS / "runs" / "ast_ft_source_disjoint_standard_s0" / "best.pt"
-astc = ASTClassifier(ast_ck)
+    code(r'''astc = ASTClassifier(RESULTS / "runs" / "ast_ft_source_disjoint_standard_s0" / "best.pt")    # ordinary
+astm = ASTClassifier(RESULTS / "runs" / "ast_ftsc_source_disjoint_source_s0" / "best.pt")  # combined source-aware
 print(f"AST: {astc.n_params:,} parameters; layers 0..{astc.k-1} frozen pretrained, layer {astc.k}..11 fine-tuned, new head")
+print("combined model: supcon weight", astm.info["args"]["supcon"], "| sampler", astm.info["args"]["sampler"])
 s_ast, t_ast = astc.predict(wave)
-print(f"AST prediction: {CLASSES[s_ast.argmax()]} (true: {row.cls}) | inference {1000*t_ast:.0f} ms on CPU")
-fig, ax = plt.subplots(figsize=(8, 3))
+s_astm, t_astm = astm.predict(wave)
+print(f"AST ordinary: {CLASSES[s_ast.argmax()]} | AST combined: {CLASSES[s_astm.argmax()]} | true: {row.cls} | {1000*t_ast:.0f} ms on CPU")
+fig, ax = plt.subplots(figsize=(9, 3))
 x = np.arange(len(CLASSES))
-ax.bar(x - .2, s_cnn, .4, label="CNN"); ax.bar(x + .2, s_ast, .4, label="AST fine-tuned")
+ax.bar(x - .27, s_cnn, .27, label="CNN"); ax.bar(x, s_ast, .27, label="AST ordinary"); ax.bar(x + .27, s_astm, .27, label="AST combined")
 ax.set_xticks(x, CLASSES); ax.set_ylabel("raw softmax score (not calibrated)"); ax.set_title(f"true class: {row.cls}"); ax.legend(); plt.show()'''),
     md("## 6. Compare both models on several test recordings (one per class)"),
     code(r'''rows = []
 for c in CLASSES:
     r = test[test.cls == c].sample(1, random_state=int(os.environ.get("DEMO_SEED", 3))).iloc[0]
     w, _ = load_mono(audio[r.filename])
-    a, ta = cnn.predict(w); b, tb = astc.predict(w)
+    a, ta = cnn.predict(w); b, tb = astc.predict(w); m, _ = astm.predict(w)
     rows.append(dict(file=r.filename, website=r.source, true=c, cnn=CLASSES[a.argmax()], cnn_score=a.max(),
-                     ast=CLASSES[b.argmax()], ast_score=b.max(), cnn_ms=1000*ta, ast_ms=1000*tb))
+                     ast=CLASSES[b.argmax()], ast_score=b.max(), ast_combined=CLASSES[m.argmax()],
+                     combined_score=m.max(), cnn_ms=1000*ta, ast_ms=1000*tb))
 res = pd.DataFrame(rows)
-print("CNN correct:", (res.cnn == res.true).sum(), "/", len(res), "| AST correct:", (res.ast == res.true).sum(), "/", len(res))
+for k in ("cnn", "ast", "ast_combined"):
+    print(f"{k}: {(res[k] == res.true).sum()}/{len(res)} correct")
+print("7 clips is a demonstration, not an evaluation: full-test-set results are below.")
 res.round(3)'''),
     md("## 7. Saved full-test-set results (computed offline by `dl_report.py`)"),
     code(r'''tab = pd.read_csv(RESULTS / "report" / "system_comparison.csv")
-tab[tab.evaluation == "source-disjoint test"][["system", "seeds", "test_clips", "test_sources", "macro_f1", "ci_lo", "ci_hi", "accuracy"]].round(3)'''),
+display(tab[tab.evaluation == "source-disjoint test"][["system", "seeds", "test_clips", "test_sources", "macro_f1", "ci_lo", "ci_hi", "accuracy"]].round(3))'''),
+    md("## 8. The controlled experiment: does source-aware training help on unseen sources?\n\n"
+       "Effects from the 2 x 2 design (sampling x contrastive term), paired bootstrap over test source groups. "
+       "A hypothesis is supported only if its 95% CI excludes 0 (pre-specified in `docs/PREREGISTRATION.md`)."),
+    code(r'''from IPython.display import Image
+eff = pd.read_csv(RESULTS / "report" / "ast_2x2_effects.csv")
+display(eff.round(4))
+display(Image(str(RESULTS / "report" / "G6_ast_2x2_source_aware_training.png")))
+display(Image(str(RESULTS / "report" / "G9_source_clustering_of_embeddings.png")))'''),
 ]
 
 train = nbf.v4.new_notebook()
