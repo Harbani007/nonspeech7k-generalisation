@@ -1,0 +1,7 @@
+[1] sampler standard: cross-source positive pairs per batch of 32: mean 133.8 (min 104); anchors with a positive: mean 0.99
+[1] sampler source  : cross-source positive pairs per batch of 32: mean 139.4 (min 116); anchors with a positive: mean 0.99
+    fixed batch: 32 clips, 30 source groups, classes [6, 4, 5, 6, 4, 1, 6]
+[2] contrastive loss 2.6842; anchors used 0.97; grad norm on pretrained AST layer 11 + LayerNorm 4.295e+00
+[3] 5 contrastive-only steps on the fixed batch: loss 2.6842 -> 1.4183; relative change of AST layer-11 attention.q_proj.weight 2.40e-02
+[4] all clips relabelled as one source: anchors used 0.00, loss 0.0000 (must be 0, 0)
+SMOKE TEST PASSED

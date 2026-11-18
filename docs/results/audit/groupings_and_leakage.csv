@@ -1,0 +1,5 @@
+grouping,groups,test_groups,groups_in_both_splits,test_clips_from_shared,test_clips,multi_class_groups,test_share_shared
+File_ID as published,2304,407,6,32,725,97,0.044137931034482755
+"File_ID, collision-free",2475,407,4,29,725,4,0.04
+reconstructed source,1586,407,4,29,725,4,0.04
+source + confirmed duplicates,1503,406,21,52,725,5,0.07172413793103448

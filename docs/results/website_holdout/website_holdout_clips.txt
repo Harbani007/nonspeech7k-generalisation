@@ -1,0 +1,69 @@
+merged duplicate audio: 1586 -> 1503 groups
+
+held-out website aigei: scored ['cough', 'crying', 'screaming', 'sneeze', 'yawn']; untestable ['breath', 'laugh']
+  seed 0 done
+  seed 1 done
+  seed 2 done
+  seed 3 done
+  seed 4 done
+  training size 700; distinct recordings holdout 409 / control 436; share of aigei clips in control training 0.27
+
+held-out website freesound: scored ['cough', 'crying', 'laugh', 'screaming', 'sneeze', 'yawn']; untestable ['breath']
+  seed 0 done
+  seed 1 done
+  seed 2 done
+  seed 3 done
+  seed 4 done
+  training size 669; distinct recordings holdout 258 / control 402; share of freesound clips in control training 0.50
+
+held-out website youtube: scored ['laugh']; untestable ['breath', 'cough', 'crying', 'screaming', 'sneeze', 'yawn']
+  seed 0 done
+  seed 1 done
+  seed 2 done
+  seed 3 done
+  seed 4 done
+  training size 700; distinct recordings holdout 479 / control 438; share of youtube clips in control training 0.14
+
+macro-F1 over scored classes (clips matched), mean over 5 seeds; 95% CI from a bootstrap over test recordings
+                      classes  test_recordings  ...  ci_lo  ci_hi
+heldout   featureset                            ...              
+aigei     spec              5              427  ...  0.027  0.082
+          struct-nf         5              427  ...  0.023  0.056
+          ast               5              427  ...  0.073  0.140
+freesound spec              6              905  ...  0.043  0.125
+          struct-nf         6              905  ...  0.093  0.135
+          ast               6              905  ...  0.056  0.140
+youtube   spec              1                5  ... -0.084  0.098
+          struct-nf         1                5  ...  0.050  0.092
+          ast               1                5  ... -0.003  0.036
+
+[9 rows x 8 columns]
+
+difference between feature sets' gaps (positive = first loses more)
+                            gap_diff  ci_lo  ci_hi
+heldout   pair                                    
+aigei     spec - struct-nf     0.011 -0.015  0.046
+          spec - ast          -0.063 -0.103 -0.005
+          struct-nf - ast     -0.074 -0.110 -0.024
+freesound spec - struct-nf    -0.029 -0.071  0.009
+          spec - ast          -0.012 -0.036  0.013
+          struct-nf - ast      0.017 -0.023  0.057
+youtube   spec - struct-nf    -0.060 -0.162  0.018
+          spec - ast           0.010 -0.088  0.084
+          struct-nf - ast      0.070  0.015  0.091
+
+per-class recall drop (control - holdout)
+featureset                            ast  spec  struct-nf
+heldout   cls       test_recordings                       
+aigei     cough     189              0.01  0.02       0.03
+          crying    64               0.37  0.05       0.10
+          screaming 41              -0.01  0.01       0.01
+          sneeze    79              -0.00  0.09      -0.02
+          yawn      55              -0.00 -0.00       0.06
+freesound cough     98              -0.02 -0.04      -0.08
+          crying    92               0.05  0.12       0.19
+          laugh     292              0.13  0.04       0.20
+          screaming 188              0.32  0.31       0.07
+          sneeze    100              0.03 -0.04       0.08
+          yawn      136              0.04  0.02       0.02
+youtube   laugh     5                0.02  0.02       0.09
