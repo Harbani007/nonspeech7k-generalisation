@@ -15,6 +15,14 @@ receive gradients and are updated by AdamW. Modes:
   finetune : layers K..11, final LayerNorm and head trained (partial fine-tuning)
 Samplers 'standard' and 'source' are defined exactly as in train_cnn.py.
 
+Cross-source supervised contrastive term (--supcon LAMBDA > 0), added to cross-entropy:
+  z = L2-normalised projection (768 -> 768 -> 128 MLP) of the pooled AST embedding; for anchor i in a batch,
+  positives are clips of the SAME class from a DIFFERENT source group (sources.py keys with confirmed duplicates
+  merged, so a re-upload is never a positive); clips of the same class AND same source are removed from both the
+  positives and the denominator (neither pulled together nor pushed apart); all other clips are negatives.
+  Anchors with no eligible positive in the batch are skipped. LAMBDA = 0 gives plain cross-entropy with an
+  identical initialisation, batch sequence and optimiser (the projection head is always built).
+
   python ast_finetune.py cache --data results/v3/dl --audio-root data/audio --freeze-k 10 --out results/v3/ast_cache
   python ast_finetune.py train --data results/v3/dl --cache results/v3/ast_cache --mode finetune --sampler source --seed 0 --out runs/ast_ft_source_s0
 """
@@ -136,6 +144,28 @@ def ast_name(n, k):
     return n
 
 
+def cross_source_supcon(z, y, g, tau):
+    """Class-conditioned cross-source supervised contrastive loss.
+
+    z: (B, d) L2-normalised embeddings; y: (B,) class ids; g: (B,) source-group ids.
+    Returns (loss, fraction of anchors that had at least one eligible positive)."""
+    B = z.shape[0]
+    sim = z @ z.T / tau
+    eye = torch.eye(B, dtype=torch.bool, device=z.device)
+    same_y = y[:, None] == y[None, :]
+    same_g = g[:, None] == g[None, :]
+    pos = same_y & ~same_g                     # same class, independent source
+    excluded = (same_y & same_g) | eye         # same class & same source, or self
+    logits = sim.masked_fill(excluded, float("-inf"))
+    log_prob = logits - torch.logsumexp(logits, dim=1, keepdim=True)
+    n_pos = pos.sum(1)
+    ok = n_pos > 0
+    if not ok.any():
+        return z.sum() * 0.0, 0.0
+    per_anchor = -(log_prob.masked_fill(~pos, 0.0).sum(1)[ok] / n_pos[ok])
+    return per_anchor.mean(), float(ok.float().mean())
+
+
 def cmd_train(a):
     os.makedirs(a.out, exist_ok=True)
     torch.manual_seed(a.seed)
@@ -150,6 +180,7 @@ def cmd_train(a):
     _, ast = load_ast()
     torch.manual_seed(a.seed)  # same new-head initialisation for every sampler at a given seed
     model = ASTTop(ast, a.freeze_k, len(CLASSES))
+    proj = nn.Sequential(nn.Linear(768, 768), nn.ReLU(), nn.Linear(768, a.proj_dim))  # built in every condition
     for p in model.parameters():
         p.requires_grad = a.mode == "finetune"
     for p in model.head.parameters():
@@ -158,7 +189,7 @@ def cmd_train(a):
     n_tr = sum(p.numel() for p in trainable)
     n_frozen = sum(p.numel() for p in ast.parameters()) + sum(p.numel() for p in model.head.parameters()) - n_tr
     groups = [{"params": [p for n, p in model.named_parameters() if p.requires_grad and not n.startswith("head")], "lr": a.lr},
-              {"params": list(model.head.parameters()), "lr": a.head_lr}]
+              {"params": list(model.head.parameters()) + (list(proj.parameters()) if a.supcon > 0 else []), "lr": a.head_lr}]
     groups = [g for g in groups if g["params"]]
     opt = torch.optim.AdamW(groups, weight_decay=a.wd)
     steps_per_epoch = a.samples_per_epoch // a.batch
@@ -166,31 +197,44 @@ def cmd_train(a):
                                                 total_steps=a.epochs * steps_per_epoch, pct_start=0.1)
     dtr = info.iloc[pos["train"]].reset_index(drop=True)
     w = sample_weights(dtr, a.sampler)
+    gid = torch.tensor(pd.factorize(info.group.values)[0], dtype=torch.long)
     gen = torch.Generator().manual_seed(1000 + a.seed)
     w_before = {n: p.detach().clone() for n, p in model.named_parameters() if not n.startswith("head")}
     print(f"mode {a.mode}; trainable params {n_tr:,}; "
           f"frozen params {n_frozen:,}; train pool {len(dtr)} clips / {dtr.group.nunique()} sources; "
-          f"val {len(pos['val'])}; test {len(pos['test'])}; sampler {a.sampler}", flush=True)
+          f"val {len(pos['val'])}; test {len(pos['test'])}; sampler {a.sampler}; supcon {a.supcon} (tau {a.tau})", flush=True)
 
     def tokens(ix):
         return torch.from_numpy(np.asarray(H[ix], np.float32))
 
     @torch.no_grad()
-    def predict(ix):
+    def predict(ix, return_emb=False):
         model.eval()
-        return torch.cat([F.softmax(model(tokens(ix[i:i + 32])), 1) for i in range(0, len(ix), 32)]).numpy()
+        embs = torch.cat([model.pooled(tokens(ix[i:i + 32])) for i in range(0, len(ix), 32)])
+        p = F.softmax(model.head(embs), 1).numpy()
+        return (p, embs.numpy()) if return_emb else p
 
     hist, best, t0, seen, grad_log = [], -1.0, time.time(), [], []
     for ep in range(1, a.epochs + 1):
         model.train()
         draw = torch.multinomial(w, steps_per_epoch * a.batch, replacement=True, generator=gen).numpy()
         seen.append(draw)
-        tot = 0.0
+        tot = ce_tot = sc_tot = frac_tot = 0.0
         for s in range(steps_per_epoch):
             b = draw[s * a.batch:(s + 1) * a.batch]
             ix = pos["train"][b]
             order = np.argsort(ix)  # memmap reads want sorted indices
-            loss = F.cross_entropy(model(tokens(ix[order])), y[ix[order]])
+            ib = ix[order]
+            emb = model.pooled(tokens(ib))
+            ce = F.cross_entropy(model.head(emb), y[ib])
+            loss = ce
+            yb, gb = y[ib], gid[ib]
+            frac_tot += float(((yb[:, None] == yb[None, :]) & (gb[:, None] != gb[None, :])).any(1).float().mean())
+            if a.supcon > 0:
+                sc, _ = cross_source_supcon(F.normalize(proj(emb), dim=1), yb, gb, a.tau)
+                loss = ce + a.supcon * sc
+                sc_tot += sc.item()
+            ce_tot += ce.item()
             opt.zero_grad()
             loss.backward()
             if s == 0 and a.mode == "finetune":
@@ -205,12 +249,14 @@ def cmd_train(a):
         yv = y[pos["val"]].numpy()
         vloss = float(F.nll_loss(torch.log(torch.from_numpy(pv) + 1e-9), torch.from_numpy(yv)))
         m = metrics(yv, pv.argmax(1), len(CLASSES))
-        hist.append(dict(epoch=ep, train_loss=tot / steps_per_epoch, val_loss=vloss, val_acc=m["accuracy"],
+        hist.append(dict(epoch=ep, train_loss=tot / steps_per_epoch, train_ce=ce_tot / steps_per_epoch,
+                         train_supcon=sc_tot / steps_per_epoch, anchors_with_positive=frac_tot / steps_per_epoch, val_loss=vloss, val_acc=m["accuracy"],
                          val_macro_f1=m["macro_f1"], val_bal_acc=m["balanced_accuracy"], elapsed_s=time.time() - t0))
         print(f"epoch {ep} train_loss {tot / steps_per_epoch:.3f} val_loss {vloss:.3f} val_acc {m['accuracy']:.3f} "
               f"val_macroF1 {m['macro_f1']:.3f} ({time.time() - t0:.0f}s)", flush=True)
         if m["macro_f1"] > best:
             best = m["macro_f1"]
+            pd.DataFrame(pv, columns=[f"p_{c}" for c in CLASSES]).assign(y=yv).to_csv(os.path.join(a.out, "val_predictions.csv"), index=False)
             torch.save(dict(state_dict={k: v for k, v in model.state_dict().items()}, freeze_k=a.freeze_k,
                             mode=a.mode, classes=CLASSES, ckpt=CKPT, max_len=MAX_LEN, epoch=ep, args=vars(a)),
                        os.path.join(a.out, "best.pt"))
@@ -223,7 +269,8 @@ def cmd_train(a):
              for n, p in model.named_parameters() if n in w_before}
     ck = torch.load(os.path.join(a.out, "best.pt"), weights_only=False)
     model.load_state_dict(ck["state_dict"])
-    pt = predict(pos["test"])
+    pt, et = predict(pos["test"], return_emb=True)
+    np.save(os.path.join(a.out, "test_embeddings.npy"), et.astype(np.float16))
     res = metrics(y[pos["test"]].numpy(), pt.argmax(1), len(CLASSES))
     seen = np.concatenate(seen)
     res.update(dict(best_epoch=ck["epoch"], best_val_macro_f1=best, trainable_params=n_tr, train_seconds=time.time() - t0,
@@ -265,6 +312,9 @@ def main():
     t.add_argument("--lr", type=float, default=3e-5)
     t.add_argument("--head-lr", type=float, default=1e-3)
     t.add_argument("--wd", type=float, default=1e-2)
+    t.add_argument("--supcon", type=float, default=0.0, help="weight of the cross-source contrastive term (0 = off)")
+    t.add_argument("--tau", type=float, default=0.1)
+    t.add_argument("--proj-dim", type=int, default=128)
     t.add_argument("--out", required=True)
     a = ap.parse_args()
     cmd_cache(a) if a.cmd == "cache" else cmd_train(a)

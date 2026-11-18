@@ -177,3 +177,33 @@ cross-correlation over all lags (all clips are 32 kHz mono, checked) >= 0.9:
   xcorr 0.7); cross-split pairs stay between 21 and 24 under every setting. The old top-1 / 0.98 rule finds 102.
 - Limitation: recall is bounded by AST screening; duplicates whose embeddings differ more than cosine 0.95 (heavy
   re-encoding, partial overlaps) are not searched.
+
+## 8. Leave-one-website-out with corrected sources (v3, replaces section 6)
+
+Same design as section 6 (`website_holdout.py`, 5 source-disjoint folds per website, 5 seeds, paired bootstrap
+over test sources with seeds averaged inside each resample), now grouped by `sources.py` keys with confirmed
+duplicates merged (1,503 groups). Outputs: `results/v3/website_holdout_{recordings,clips}*.csv/.txt`.
+
+Strict (recordings-matched: same training size, class mix and number of distinct sources per class; only the
+website mix differs). Macro-F1 over the classes the held-out website can score:
+
+| Held-out website (scored classes, test sources) | Features | control | holdout | gap [95% CI] |
+|---|---|---|---|---|
+| Aigei (5 classes, 427) | AST | 0.849 | 0.792 | **0.057 [0.043, 0.072]** |
+| | structure | 0.546 | 0.504 | 0.042 [0.012, 0.064] |
+| | spectral | 0.473 | 0.446 | 0.026 [-0.010, 0.080] |
+| Freesound (6 classes, 905) | AST | 0.764 | 0.708 | **0.056 [0.035, 0.075]** |
+| | structure | 0.420 | 0.349 | 0.071 [0.053, 0.087] |
+| | spectral | 0.358 | 0.310 | 0.048 [0.018, 0.074] |
+| YouTube (laugh only, 5 sources; underpowered) | AST | 0.900 | 0.909 | -0.008 [-0.018, 0.000] |
+
+- **The website gap survives correct grouping:** about 0.06 macro-F1 for frozen-AST features on both testable
+  websites, with training size, class mix and source diversity matched and duplicates merged.
+- **Retracted from section 6:** "AST loses more than the handcrafted features on Aigei". With corrected groups the
+  gap differences between feature sets all include 0 (Aigei structure - AST -0.015 [-0.048, 0.009]; Freesound
+  structure - AST +0.016 [-0.007, 0.040]). Pretrained features are neither more nor less robust to website shift.
+- Clip-matched gaps are larger (AST: Aigei 0.112, Freesound 0.098), so part of the clip-matched gap is lost source
+  diversity rather than website.
+- The loss is class-specific. Aigei held out: crying recall drops 0.18 (AST), other classes <= 0.03. Freesound held
+  out: yawn 0.11, laugh 0.09, crying 0.08, screaming 0.08.
+- Breath can never be scored (one website), and YouTube only for laugh, so this test covers 5-6 of 7 classes.

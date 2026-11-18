@@ -24,13 +24,16 @@ K = len(CLASSES)
 SYSTEMS = [  # (label, run-folder glob relative to runs, role)
     ("Spectral + LR", "ml_spec_{p}", "traditional ML"),
     ("Structure + LR", "ml_struct-nf_{p}", "traditional ML"),
-    ("CNN (scratch)", "cnn_{p}_standard_s*", "deep learning"),
-    ("CNN (scratch), source-balanced", "cnn_{p}_source_s*", "deep learning, proposed sampling"),
+    ("CNN (scratch)", "cnn_{p}_standard_s*", "deep learning, quick control"),
+    ("CNN (scratch), source-balanced", "cnn_{p}_source_s*", "deep learning, quick control"),
     ("Frozen AST (10 s) + LR", "ml_ast_{p}", "pretrained representation"),
-    ("Frozen AST (4 s) + linear head", "ast_frozen_{p}_standard_s*", "pretrained representation"),
-    ("AST, last block fine-tuned", "ast_ft_{p}_standard_s*", "transfer learning"),
-    ("AST, last block fine-tuned, source-balanced", "ast_ft_{p}_source_s*", "transfer learning, proposed sampling"),
+    ("AST frozen + linear head", "ast_frozen_{p}_standard_s*", "pretrained representation"),
+    ("AST-FT ordinary", "ast_ft_{p}_standard_s*", "fine-tuned baseline (CE)"),
+    ("AST-FT source-balanced", "ast_ft_{p}_source_s*", "CE + source-balanced sampling"),
+    ("AST-FT cross-source contrastive", "ast_ftsc_{p}_standard_s*", "CE + cross-source SupCon"),
+    ("AST-FT combined", "ast_ftsc_{p}_source_s*", "CE + SupCon + source-balanced sampling"),
 ]
+AST4 = ["AST-FT ordinary", "AST-FT source-balanced", "AST-FT cross-source contrastive", "AST-FT combined"]
 
 
 def save(fig, out, name, df=None):
@@ -87,10 +90,14 @@ def main():
                "macro_f1_seed_sd", "accuracy", "balanced_accuracy"]].round(3).to_string(index=False))
 
     # ---- paired differences ---------------------------------------------------------------------------------
-    pairs = [("CNN (scratch)", "CNN (scratch), source-balanced", "source-balanced - standard (CNN)"),
-             ("AST, last block fine-tuned", "AST, last block fine-tuned, source-balanced", "source-balanced - standard (AST FT)"),
-             ("Frozen AST (4 s) + linear head", "AST, last block fine-tuned", "fine-tuned - frozen (AST, same 4 s input)"),
-             ("CNN (scratch)", "AST, last block fine-tuned", "AST FT - CNN"),
+    pairs = [("AST-FT ordinary", "AST-FT source-balanced", "balanced - ordinary"),
+             ("AST-FT ordinary", "AST-FT cross-source contrastive", "contrastive - ordinary"),
+             ("AST-FT ordinary", "AST-FT combined", "combined - ordinary"),
+             ("AST-FT source-balanced", "AST-FT combined", "combined - balanced"),
+             ("AST-FT cross-source contrastive", "AST-FT combined", "combined - contrastive"),
+             ("AST frozen + linear head", "AST-FT ordinary", "fine-tuned - frozen (AST, same 4 s input)"),
+             ("CNN (scratch)", "AST-FT ordinary", "AST-FT - CNN"),
+             ("CNN (scratch)", "CNN (scratch), source-balanced", "source-balanced - standard (CNN)"),
              ("Structure + LR", "CNN (scratch)", "CNN - structure LR")]
     drows = []
     for A, B, name in pairs:
@@ -136,8 +143,7 @@ def main():
             hist.append(pd.read_csv(h).assign(run=os.path.basename(d)))
     if hist:
         H = pd.concat(hist)
-        for fam, title in [("cnn_source_disjoint", "CNN (scratch), source-disjoint protocol"),
-                           ("ast_ft_source_disjoint", "AST last-block fine-tuning, source-disjoint protocol")]:
+        for fam, title in [("cnn_source_disjoint", "CNN (scratch), source-disjoint protocol")]:
             h = H[H.run.str.startswith(fam)]
             if h.empty:
                 continue
@@ -155,11 +161,15 @@ def main():
             save(fig, a.out, f"G1_G2_learning_curves_{fam}", h)
 
     # G3 confusion matrices (source-disjoint, summed over seeds), row-normalised
-    cms = [(s, preds_cache[(s, "source-disjoint test")]) for s in ("CNN (scratch)", "Frozen AST (10 s) + LR", "AST, last block fine-tuned")
+    cms = [(s, preds_cache[(s, "source-disjoint test")]) for s in ["AST frozen + linear head"] + AST4
            if (s, "source-disjoint test") in preds_cache]
     if cms:
-        fig, axs = plt.subplots(1, len(cms), figsize=(5.2 * len(cms), 4.6))
-        axs = np.atleast_1d(axs)
+        nc = min(3, len(cms))
+        nr = int(np.ceil(len(cms) / nc))
+        fig, axs = plt.subplots(nr, nc, figsize=(5.2 * nc, 4.6 * nr), squeeze=False)
+        for ax in axs.ravel()[len(cms):]:
+            ax.axis("off")
+        axs = axs.ravel()
         recs = []
         for ax, (s, (y, g, preds, _)) in zip(axs, cms):
             c = sum(confusion(y, q, K) for q in preds)
@@ -204,12 +214,11 @@ def main():
         save(fig, a.out, name, t.drop(columns="order"))
 
     bars([s for s, _, _ in SYSTEMS], "G0_all_systems", "All systems, source-disjoint test")
-    bars(["Frozen AST (4 s) + linear head", "AST, last block fine-tuned"], "G5_frozen_vs_finetuned_ast",
+    bars(["AST frozen + linear head", "AST-FT ordinary"], "G5_frozen_vs_finetuned_ast",
          "Frozen vs fine-tuned AST (same 4 s input, same head)")
-    bars(["CNN (scratch)", "CNN (scratch), source-balanced", "AST, last block fine-tuned",
-          "AST, last block fine-tuned, source-balanced"], "G6_standard_vs_source_balanced",
-         "Standard vs source-balanced training (source-disjoint test)")
-    bars(["Spectral + LR", "Structure + LR", "CNN (scratch)", "Frozen AST (10 s) + LR", "AST, last block fine-tuned"],
+    bars(AST4, "G6_ast_2x2_source_aware_training",
+         "AST fine-tuning: ordinary / source-balanced / cross-source contrastive / combined")
+    bars(["Spectral + LR", "Structure + LR", "CNN (scratch)", "Frozen AST (10 s) + LR"],
          "G7_original_vs_corrected_evaluation", "Official vs de-duplicated official vs source-disjoint test",
          evals=("official test", "official test, de-duplicated", "source-disjoint test"))
 
@@ -219,7 +228,120 @@ def main():
         for ext in ("png", "svg"):
             shutil.copy(os.path.join(a.audit, "figures", f"A2_source_concentration.{ext}"), os.path.join(a.out, f"G8_source_concentration.{ext}"))
         shutil.copy(os.path.join(a.audit, "source_concentration_class.csv"), os.path.join(a.out, "G8_source_concentration.csv"))
+    ast_2x2(a, preds_cache)
     print("wrote", a.out)
+
+
+def fast_f1(y, p):
+    c = np.bincount(y * K + p, minlength=K * K).reshape(K, K)
+    tp, sup, pred = np.diag(c), c.sum(1), c.sum(0)
+    ok = sup > 0
+    return float((2 * tp[ok] / np.maximum(sup[ok] + pred[ok], 1)).mean())
+
+
+def ast_2x2(a, preds_cache):
+    """Factorial analysis of the controlled AST experiment, learning curves, source-clustering diagnostic."""
+    def key(s):
+        return (s, "source-disjoint test")
+    if not all(key(s) in preds_cache for s in AST4):
+        print("2x2 AST analysis skipped: not all four conditions have finished runs")
+        return
+    y, g, _, f0 = preds_cache[key(AST4[0])]
+    for s in AST4:
+        assert (preds_cache[key(s)][3].filename.values == f0.filename.values).all()
+    P = {s: preds_cache[key(s)][2] for s in AST4}
+    o, b, c, m = AST4
+
+    def effects(ix):
+        sc = {s: np.mean([fast_f1(y[ix], q[ix]) for q in P[s]]) for s in AST4}
+        out = {f"macro-F1 {s}": sc[s] for s in AST4}
+        out.update(balanced_main_effect=(sc[b] + sc[m] - sc[o] - sc[c]) / 2,
+                   contrastive_main_effect=(sc[c] + sc[m] - sc[o] - sc[b]) / 2,
+                   interaction=(sc[m] - sc[b]) - (sc[c] - sc[o]),
+                   combined_minus_ordinary=sc[m] - sc[o])
+        return out
+    uniq = np.unique(g)
+    posg = {x: np.where(g == x)[0] for x in uniq}
+    rng = np.random.default_rng(2024)
+    pt = effects(np.arange(len(y)))
+    boot = pd.DataFrame([effects(np.concatenate([posg[x] for x in rng.choice(uniq, len(uniq))])) for _ in range(a.boot)])
+    eff = pd.DataFrame([dict(quantity=k, estimate=v, ci_lo=np.percentile(boot[k], 2.5), ci_hi=np.percentile(boot[k], 97.5))
+                        for k, v in pt.items()])
+    eff["ci_excludes_zero"] = (eff.ci_lo > 0) | (eff.ci_hi < 0)
+    eff["seeds_per_condition"] = min(len(P[s]) for s in AST4)
+    eff["test_sources"] = len(uniq)
+    eff.to_csv(os.path.join(a.out, "ast_2x2_effects.csv"), index=False)
+    print("\n2x2 AST experiment (source-disjoint test, macro-F1, source-grouped bootstrap):")
+    print(eff.round(4).to_string(index=False))
+
+    rows = []
+    for s in AST4:
+        for w in sorted(f0.source.unique()):
+            ix = np.where(f0.source.values == w)[0]
+            rows.append(dict(system=s, website=w, clips=len(ix), sources=len(np.unique(g[ix])),
+                             classes=len(np.unique(y[ix])), macro_f1=np.mean([fast_f1(y[ix], q[ix]) for q in P[s]])))
+    pw = pd.DataFrame(rows)
+    pw.to_csv(os.path.join(a.out, "ast_2x2_per_website.csv"), index=False)
+    print("\nper-website macro-F1 (source-disjoint test):\n", pw.pivot(index="website", columns="system", values="macro_f1")[AST4].round(3).to_string())
+
+    cols = dict(zip(AST4, ["#4C72B0", "#55A868", "#C44E52", "#8172B2"]))
+    pats = dict(zip(AST4, ["ast_ft_source_disjoint_standard_s*", "ast_ft_source_disjoint_source_s*",
+                           "ast_ftsc_source_disjoint_standard_s*", "ast_ftsc_source_disjoint_source_s*"]))
+    hs = []
+    for s in AST4:
+        for d in sorted(glob.glob(os.path.join(a.runs, pats[s]))):
+            if os.path.exists(os.path.join(d, "test_metrics.json")):
+                hs.append(pd.read_csv(os.path.join(d, "history.csv")).assign(system=s, run=os.path.basename(d)))
+    H = pd.concat(hs)
+    fig, ax = plt.subplots(1, 4, figsize=(21, 4.2))
+    for (s, run), d in H.groupby(["system", "run"]):
+        lab = s if run.endswith("_s0") else None
+        ax[0].plot(d.epoch, d.train_ce, color=cols[s], label=lab)
+        ax[0].plot(d.epoch, d.val_loss, "--", color=cols[s])
+        ax[1].plot(d.epoch, d.val_macro_f1, color=cols[s], label=lab)
+        ax[1].plot(d.epoch, d.val_acc, ":", color=cols[s])
+        if d.train_supcon.abs().sum() > 0:
+            ax[2].plot(d.epoch, d.train_supcon, color=cols[s], label=lab)
+        ax[3].plot(d.epoch, d.anchors_with_positive, color=cols[s], label=lab)
+    ax[0].set(title="cross-entropy: train (solid), val (dashed)", xlabel="epoch")
+    ax[1].set(title="validation macro-F1 (solid), accuracy (dotted)", xlabel="epoch")
+    ax[2].set(title="cross-source SupCon loss (train)", xlabel="epoch")
+    ax[3].set(title="batch anchors with a cross-source positive", xlabel="epoch", ylim=(0, 1))
+    for x in ax:
+        x.legend(fontsize=7)
+    save(fig, a.out, "G1_G2_learning_curves_ast_2x2", H)
+
+    rows = []
+    for s in AST4:
+        for d in sorted(glob.glob(os.path.join(a.runs, pats[s]))):
+            e = os.path.join(d, "test_embeddings.npy")
+            if not os.path.exists(e):
+                continue
+            E = np.load(e).astype(np.float32)
+            E /= np.linalg.norm(E, axis=1, keepdims=True)
+            same, chance = [], []
+            for k in range(K):
+                ix = np.where(y == k)[0]
+                S = E[ix] @ E[ix].T
+                np.fill_diagonal(S, -np.inf)
+                same.append(g[ix[S.argmax(1)]] == g[ix])
+                gg = g[ix]
+                chance.append([(np.sum(gg == gg[i]) - 1) / (len(ix) - 1) for i in range(len(ix))])
+            rows.append(dict(system=s, run=os.path.basename(d), same_source_nn_rate=float(np.mean(np.concatenate(same))),
+                             chance_rate=float(np.mean(np.concatenate(chance)))))
+    if rows:
+        R = pd.DataFrame(rows)
+        agg = R.groupby("system", sort=False).same_source_nn_rate.agg(["mean", "std", "count"]).reindex(AST4)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.bar(range(4), agg["mean"], yerr=agg["std"].fillna(0), color=[cols[s] for s in AST4], capsize=3)
+        ax.axhline(R.chance_rate.iloc[0], color="k", ls="--", lw=1, label="chance (random same-class neighbour)")
+        ax.set_xticks(range(4), [x.replace("AST-FT ", "") for x in AST4])
+        ax.set(ylabel="within-class nearest neighbour\nfrom the same source", ylim=(0, 1),
+               title="Source clustering of test embeddings (lower = less source-specific)")
+        ax.legend(fontsize=8)
+        save(fig, a.out, "G9_source_clustering_of_embeddings", R)
+        print("\nsource clustering (same-source within-class NN rate; chance %.3f):\n" % R.chance_rate.iloc[0],
+              agg.round(3).to_string())
 
 
 if __name__ == "__main__":
