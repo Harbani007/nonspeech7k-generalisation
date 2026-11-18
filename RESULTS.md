@@ -82,3 +82,32 @@ the initial guess of 6 dB / 0.08 s (0.371 vs 0.334, SE 0.031). The test set was 
   recordings. Its breath scores should be read with that in mind.
 - Logistic regression on frozen features only; no fine-tuning.
 - 5 seeds, one fold per seed.
+
+## 6. Leave-one-website-out (added after the first run)
+
+`website_holdout.py`. For each website W, W's recordings are split into 5 recording-disjoint folds. Each fold is
+classified by a model trained without W ("holdout") and by a control trained with W's *other* recordings
+("control"), with the same number of clips per class. Both never see the test recordings, so the gap isolates
+the cost of never having heard the website. Classes with fewer than 5 recordings in W are not scored. Pooled
+data, 3 seeds, 95% intervals from a paired bootstrap over test recordings.
+
+| Held-out website (scored classes) | Features | control | holdout | gap [95% CI] |
+|---|---|---|---|---|
+| Aigei (cough, cry, scream, sneeze, yawn) | AST | 0.84 | 0.71 | 0.12 [0.10, 0.15] |
+| | spectral | 0.51 | 0.37 | 0.14 [0.11, 0.16] |
+| | structure | 0.54 | 0.45 | 0.09 [0.06, 0.12] |
+| Freesound (cough, cry, laugh, scream, sneeze, yawn) | AST | 0.85 | 0.74 | 0.11 [0.06, 0.16] |
+| | spectral | 0.47 | 0.38 | 0.09 [0.03, 0.14] |
+| | structure | 0.50 | 0.38 | 0.12 [0.09, 0.14] |
+| YouTube (laugh only, 5 recordings) | AST | 0.94 | 0.93 | 0.01 [-0.02, 0.04] |
+
+- An unseen **website** costs 0.09-0.14 macro-F1 for every feature set, AST included, against 0.00-0.05 for
+  unseen **recordings** (section 1). Website shift is the bigger generalisation problem in this dataset.
+- The loss is concentrated: crying when Aigei is held out (AST recall -0.41) and screaming when Freesound is
+  held out (AST recall -0.36). Other classes barely move.
+- Not untangled yet: without W, some classes are trained on far fewer distinct recordings (e.g. Freesound
+  held out leaves screaming with 43 recordings, laugh with 5), so part of the gap may be recording diversity
+  rather than the website itself.
+- YouTube can only be tested on laugh; breath, the class with the strongest earlier hint, is untestable here.
+- Exploratory note: earlier checks (section 3 and a residual-correction test) looked at the official test set;
+  later method choices should use recording-disjoint validation only.
