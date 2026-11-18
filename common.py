@@ -1,9 +1,9 @@
 """Metadata loading and feature-cache helpers shared by the scripts."""
 import os
-import re
-
 import numpy as np
 import pandas as pd
+
+from sources import add_sources, namespaced_file_id
 
 
 def _col(df, *candidates):
@@ -23,19 +23,14 @@ def _site(d):
     return url.str.extract(r"//(?:www\.)?([a-z0-9-]+)", expand=False).fillna("unknown")
 
 
-def _underlying_source(filename, file_id):
-    """Aigei filenames like '142=KKKId0LDwVc-192_2_0.wav' or '148=17933_2_0.wav' give each clip its own File_ID
-    but name the video or sound it was cut from after the '='. Clips sharing that key share a source."""
-    m = re.match(r"^\d+=([^_]+?)(?:-man crying-aigei)?(?:-\d+)?_\d+_\d+\.wav$", filename)
-    return m.group(1) if m else file_id
-
-
 def load_meta(train_csv, test_csv, groups="source"):
-    """Pooled metadata: filename, file_id, group, y, cls, split, source (website).
+    """Pooled metadata: filename, file_id, group, y, cls, split, source (website), source_key, source_rule.
 
-    groups="source" (default): group = the underlying recording, i.e. File_ID except for Aigei clips whose
-    filename names the video/sound they were cut from (see _underlying_source); a numeric key equal to a
-    Freesound File_ID is the same sound and shares its group. groups="file_id": group = File_ID as published.
+    groups="source" (default): group = underlying source recording from sources.parse_source (namespaced, so
+        Aigei per-family counters never collide with each other or with Freesound IDs).
+    groups="file_id": published File_ID, namespaced by website (and Aigei filename family).
+    groups="file_id_raw": File_ID exactly as published. Different recordings collide ('79' is an Aigei cough,
+        an Aigei sneeze and a Freesound scream); kept only to reproduce historical numbers.
     """
     parts = []
     for path, split in [(train_csv, "train"), (test_csv, "test")]:
@@ -51,8 +46,13 @@ def load_meta(train_csv, test_csv, groups="source"):
         }))
     meta = pd.concat(parts, ignore_index=True)
     meta.insert(1, "file_id", meta["group"])
+    meta = add_sources(meta)
     if groups == "source":
-        meta["group"] = [_underlying_source(f, g) for f, g in zip(meta["filename"], meta["file_id"])]
+        meta["group"] = meta["source_key"]
+    elif groups == "file_id":
+        meta["group"] = namespaced_file_id(meta)
+    elif groups != "file_id_raw":
+        raise ValueError(f"unknown grouping {groups!r}")
     return meta
 
 
