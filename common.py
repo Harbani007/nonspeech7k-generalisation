@@ -1,5 +1,6 @@
 """Metadata loading and feature-cache helpers shared by the scripts."""
 import os
+import re
 
 import numpy as np
 import pandas as pd
@@ -22,8 +23,20 @@ def _site(d):
     return url.str.extract(r"//(?:www\.)?([a-z0-9-]+)", expand=False).fillna("unknown")
 
 
-def load_meta(train_csv, test_csv):
-    """Pooled metadata: filename, group (= File_ID, the source recording), y, cls, split, source (website)."""
+def _underlying_source(filename, file_id):
+    """Aigei filenames like '142=KKKId0LDwVc-192_2_0.wav' or '148=17933_2_0.wav' give each clip its own File_ID
+    but name the video or sound it was cut from after the '='. Clips sharing that key share a source."""
+    m = re.match(r"^\d+=([^_]+?)(?:-man crying-aigei)?(?:-\d+)?_\d+_\d+\.wav$", filename)
+    return m.group(1) if m else file_id
+
+
+def load_meta(train_csv, test_csv, groups="source"):
+    """Pooled metadata: filename, file_id, group, y, cls, split, source (website).
+
+    groups="source" (default): group = the underlying recording, i.e. File_ID except for Aigei clips whose
+    filename names the video/sound they were cut from (see _underlying_source); a numeric key equal to a
+    Freesound File_ID is the same sound and shares its group. groups="file_id": group = File_ID as published.
+    """
     parts = []
     for path, split in [(train_csv, "train"), (test_csv, "test")]:
         d = pd.read_csv(path)
@@ -36,7 +49,11 @@ def load_meta(train_csv, test_csv):
             "split": split,
             "source": _site(d),
         }))
-    return pd.concat(parts, ignore_index=True)
+    meta = pd.concat(parts, ignore_index=True)
+    meta.insert(1, "file_id", meta["group"])
+    if groups == "source":
+        meta["group"] = [_underlying_source(f, g) for f, g in zip(meta["filename"], meta["file_id"])]
+    return meta
 
 
 def index_audio(root):

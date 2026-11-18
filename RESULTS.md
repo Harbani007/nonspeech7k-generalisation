@@ -85,29 +85,51 @@ the initial guess of 6 dB / 0.08 s (0.371 vs 0.334, SE 0.031). The test set was 
 
 ## 6. Leave-one-website-out (added after the first run)
 
-`website_holdout.py`. For each website W, W's recordings are split into 5 recording-disjoint folds. Each fold is
-classified by a model trained without W ("holdout") and by a control trained with W's *other* recordings
-("control"), with the same number of clips per class. Both never see the test recordings, so the gap isolates
-the cost of never having heard the website. Classes with fewer than 5 recordings in W are not scored. Pooled
-data, 3 seeds, 95% intervals from a paired bootstrap over test recordings.
+`website_holdout.py`. For each website W, W's sources are split into 5 source-disjoint folds. Each fold is
+classified by a model trained without W ("holdout") and by a control trained with W's *other* sources
+("control"). Neither ever sees the test sources. Classes with fewer than 5 sources in W are not scored.
+5 seeds; 95% intervals from one paired bootstrap over test sources, all seeds averaged inside each resample.
 
-| Held-out website (scored classes) | Features | control | holdout | gap [95% CI] |
+Two matching modes:
+- **clips:** same clips per class in both conditions.
+- **recordings (strict):** same number of distinct sources per class, one clip each, so training size, class
+  mix and source diversity are identical and only the website mix differs.
+
+### Grouping had to be fixed first (`find_duplicates.py`, `common.load_meta`)
+
+- **File_ID is not a recording ID for Aigei.** Filenames such as `142=KKKId0LDwVc-192_2_0.wav` name the video
+  or sound each clip was cut from. 958 Aigei crying "recordings" are 70 sources; 376 clips come from one YouTube
+  video. `load_meta` now groups by that source (2,304 -> 1,398 groups; `groups="file_id"` restores the old
+  behaviour).
+- **Re-uploaded audio.** Nearest neighbours in AST space from a different source (cosine > 0.98), confirmed by
+  waveform cross-correlation > 0.9: 101 same-audio pairs, 50 across websites, **22 across the official
+  train/test split** (leakage the File_ID audit cannot see), 2 with different labels. No bit-identical copies.
+  These pairs are merged into one group (1,398 -> 1,335). Uploader identity is not in the metadata, so
+  uploader-level leakage cannot be checked.
+
+### Results with corrected groups, strict (recordings-matched)
+
+| Held-out website (scored classes, test sources) | Features | control | holdout | gap [95% CI] |
 |---|---|---|---|---|
-| Aigei (cough, cry, scream, sneeze, yawn) | AST | 0.84 | 0.71 | 0.12 [0.10, 0.15] |
-| | spectral | 0.51 | 0.37 | 0.14 [0.11, 0.16] |
-| | structure | 0.54 | 0.45 | 0.09 [0.06, 0.12] |
-| Freesound (cough, cry, laugh, scream, sneeze, yawn) | AST | 0.85 | 0.74 | 0.11 [0.06, 0.16] |
-| | spectral | 0.47 | 0.38 | 0.09 [0.03, 0.14] |
-| | structure | 0.50 | 0.38 | 0.12 [0.09, 0.14] |
-| YouTube (laugh only, 5 recordings) | AST | 0.94 | 0.93 | 0.01 [-0.02, 0.04] |
+| Aigei (5 classes, 261) | AST | 0.84 | 0.77 | 0.067 [0.039, 0.089] |
+| | spectral | 0.46 | 0.45 | 0.008 [-0.041, 0.079] |
+| | structure | 0.56 | 0.51 | 0.044 [0.009, 0.068] |
+| Freesound (6 classes, 904) | AST | 0.77 | 0.69 | 0.075 [0.046, 0.106] |
+| | spectral | 0.36 | 0.32 | 0.044 [0.020, 0.065] |
+| | structure | 0.44 | 0.35 | 0.088 [0.067, 0.106] |
+| YouTube (laugh only, 5 sources; underpowered) | AST | 0.92 | 0.92 | 0.000 [-0.021, 0.010] |
 
-- An unseen **website** costs 0.09-0.14 macro-F1 for every feature set, AST included, against 0.00-0.05 for
-  unseen **recordings** (section 1). Website shift is the bigger generalisation problem in this dataset.
-- The loss is concentrated: crying when Aigei is held out (AST recall -0.41) and screaming when Freesound is
-  held out (AST recall -0.36). Other classes barely move.
-- Not untangled yet: without W, some classes are trained on far fewer distinct recordings (e.g. Freesound
-  held out leaves screaming with 43 recordings, laugh with 5), so part of the gap may be recording diversity
-  rather than the website itself.
-- YouTube can only be tested on laugh; breath, the class with the strongest earlier hint, is untestable here.
+Clip-matched gaps with corrected groups are larger (AST: Aigei 0.128, Freesound 0.097), so part of the
+clip-matched gap is source diversity, but not all of it.
+
+- **A website gap survives every control**: 0.04-0.09 macro-F1 for AST on both testable websites, with source
+  diversity, class mix and training size matched and duplicates merged.
+- **AST is not more robust; on Aigei it loses more than the handcrafted features** (structure minus AST gap
+  -0.023 [-0.045, -0.005]). Pretraining does not protect against website shift here.
+- The loss is class-specific: crying when Aigei is held out (AST recall -0.25, 65 sources); laugh, screaming
+  and yawn when Freesound is held out (AST -0.11 to -0.15).
+- With File_ID grouping the Freesound strict gap looked near zero (AST 0.028); correct grouping changes the
+  conclusion, which is itself a reason to report grouping explicitly.
+- Sections 1-5 used File_ID groups. Their recording-disjoint numbers should be re-run with corrected groups.
 - Exploratory note: earlier checks (section 3 and a residual-correction test) looked at the official test set;
-  later method choices should use recording-disjoint validation only.
+  later method choices should use source-disjoint validation only.
