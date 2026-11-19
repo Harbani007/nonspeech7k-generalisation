@@ -83,10 +83,13 @@ def augment(x, gen):
     return x
 
 
+DEV = torch.device("cpu")
+
+
 @torch.no_grad()
 def predict(model, X, batch=128):
     model.eval()
-    out = [F.softmax(model(X[i:i + batch]), dim=1) for i in range(0, len(X), batch)]
+    out = [F.softmax(model(X[i:i + batch].to(DEV)), dim=1).cpu() for i in range(0, len(X), batch)]
     return torch.cat(out).numpy()
 
 
@@ -104,6 +107,7 @@ def main():
     ap.add_argument("--width", type=int, default=16)
     ap.add_argument("--patience", type=int, default=0, help="0 = no early stopping (fixed budget)")
     ap.add_argument("--train-limit", type=int, default=0, help="debug: use only N training clips")
+    ap.add_argument("--device", default="auto", help="auto | cpu | cuda")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -128,7 +132,11 @@ def main():
     dtr = sp.iloc[tr].reset_index(drop=True)
 
     torch.manual_seed(a.seed)  # identical initial weights for both samplers at a given seed
+    global DEV
+    DEV = torch.device("cuda" if (a.device == "auto" and torch.cuda.is_available()) or a.device == "cuda" else "cpu")
     model = LogMelCNN(len(CLASSES), a.width)
+    model.to(DEV)
+    print("device", DEV, flush=True)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=a.wd)
     steps_per_epoch = a.samples_per_epoch // a.batch
@@ -149,7 +157,7 @@ def main():
         for s in range(steps_per_epoch):
             b = draw[s * a.batch:(s + 1) * a.batch]
             xb = augment(Xtr[b], gen)
-            loss = F.cross_entropy(model(xb), ytr[b])
+            loss = F.cross_entropy(model(xb.to(DEV)), ytr[b].to(DEV))
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -165,7 +173,7 @@ def main():
               f"val_macroF1 {m['macro_f1']:.3f} ({time.time() - t0:.0f}s)", flush=True)
         if m["macro_f1"] > best:
             best, bad = m["macro_f1"], 0
-            torch.save(dict(state_dict=model.state_dict(), width=a.width, classes=CLASSES, mu=mu, sd=sd,
+            torch.save(dict(state_dict={k: v.detach().cpu() for k, v in model.state_dict().items()}, width=a.width, classes=CLASSES, mu=mu, sd=sd,
                             epoch=ep, args=vars(a)), os.path.join(a.out, "best.pt"))
         else:
             bad += 1

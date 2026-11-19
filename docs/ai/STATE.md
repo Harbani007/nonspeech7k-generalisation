@@ -1,6 +1,6 @@
 # Project state (handoff) — 19 Nov 2026
 
-Read this first in a new session. Then `professor_demo/RESEARCH_STUDY_GUIDE.md` (START HERE, Ch. 13, professor section),
+Read this first in a new session, then **docs/ai/NEXT_PLAN.md** (what to do next, in order). Then `professor_demo/RESEARCH_STUDY_GUIDE.md` (START HERE, Ch. 13, professor section),
 `RESULTS.md` sections 7-8, `docs/PREREGISTRATION.md`, `docs/NOVELTY_AUDIT.md`.
 
 ## Research question
@@ -21,6 +21,10 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
 ## In progress / ready to run
+- Phase 1: clean CNN rerun on Colab (`run_gpu_cnn.sh`; commands in NEXT_PLAN.md).
+- Phase 2: background-swap experiment, 30 dB gate first (`colab/BGSWAP_RUN.md`, `docs/PREREGISTRATION_BGSWAP.md`).
+- Phase 3: advanced models (WavLM, Whisper encoder, BEATs) plus the cross-model background probe; not coded yet.
+- Lab report and slides: `report/make_lab_report.py`, `report/make_presentation.py` (regenerate after new results).
 - Background probe at 30 dB (does background-only performance plateau above chance, i.e. context, or fall to chance, i.e. vocalisation residue?): `background_probe.py --fg-db 30`.
 - EXPLORATORY: recording-adversarial AST (`--adv`, `run_gpu_adv.sh`), also in `colab/MORNING_RUN.md`.
 
