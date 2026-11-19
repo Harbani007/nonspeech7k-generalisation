@@ -5,7 +5,7 @@ Pre-registered in `docs/PREREGISTRATION_SWAP_PROBE.md` (committed before any res
 secondary. Nothing is trained; the test partition is only scored.
 
 ## Setup
-Run the usual setup cell first (Drive mounted; `WORK`, `FB`, `RUNS`, `FREEZE_K = 0` defined; audio unzipped to
+Easiest: upload `colab/SWAP_PROBE_COLAB.ipynb` to Colab and run all cells (it does everything below). Manual route: run the usual setup cell first (Drive mounted; `WORK`, `FB`, `RUNS`, `FREEZE_K = 0` defined; audio unzipped to
 /content/data/audio; /content/splits/splits.csv present). Then pull the newest code:
 ```python
 %cd /content
