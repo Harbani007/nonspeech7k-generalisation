@@ -22,13 +22,13 @@ from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, Prefo
                                 Spacer, Table, TableStyle)
 
 COVER = {
-    "university": "[Name of the University / Institute]",
-    "department": "[Department Name]",
+    "university": "Thapar Institute of Engineering and Technology (Thapar University)",
+    "department": "Department of Computer Science and Engineering",
     "title": "Recording Identity, Website Shift and What Deep Models Listen To: "
              "A Leakage-Safe Deep-Learning Study of Human Non-Speech Vocalisation Recognition on Nonspeech7k",
-    "students": [("[Student 1 name]", "[Roll number]"), ("[Student 2 name]", "[Roll number]")],
-    "faculty": "[Name of Faculty / Lab Instructor]",
-    "session": "[Academic Session, e.g. 2026-27]",
+    "students": [("Harbani Kaur", "1024030848"), ("Ina Sharma", "1024030866")],
+    "faculty": "Ms. Arushi Madaan",
+    "session": "2026-27",
 }
 
 FONT_DIR = r"C:\Windows\Fonts"
@@ -126,6 +126,8 @@ def main():
     a = ap.parse_args()
     R, B = a.results, a.build
     rep, figs = os.path.join(R, "report"), os.path.join(R, "figures")
+    global SCR
+    SCR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screens")
     background_figure(os.path.join(B, "background_probe.png"))
     from PIL import Image as PImage  # learning curves: 1 x 4 panels -> 2 x 2 so they are readable on A4
     im = PImage.open(os.path.join(rep, "G1_G2_learning_curves_ast_2x2.png"))
@@ -457,13 +459,20 @@ def main():
             "background_probe.py; Colab notebook colab/NS7K_AST_GPU_COLAB.ipynb; demo notebooks in professor_demo/."),
           P("<b>B. Reproduction.</b> Unit tests: <font face='Courier'>python -m unittest discover tests</font> (23 tests). "
             "GPU experiments: see colab/README.md. All numbers in this report are read from result files in results/ and docs/results/."),
-          P("<b>C. Screenshots.</b> [Insert screenshots: Colab training run, background-probe output, live demo notebook "
-            "prediction.]"),
+          P("<b>C. Screenshots of implementation and execution.</b> Images below are taken from the saved outputs of the "
+            "executed notebooks (Google Colab and the local demo notebooks); text outputs are shown as console renderings of "
+            "the saved cell output."),
+          figure(os.path.join(SCR, "console_colab_probe.png"), "Google Colab (T4 GPU): printed results of the background probe.", max_h=3.3 * inch),
+          figure(os.path.join(SCR, "colab_probe_cell3_0.png"), "Google Colab: background-probe figure produced by background_probe.py.", max_h=2.3 * inch),
+          figure(os.path.join(SCR, "console_demo.png"), "Live demo notebook: model loading and predictions on real test recordings (laptop CPU).", max_h=3.0 * inch),
+          figure(os.path.join(SCR, "demo_cell7_0.png"), "Live demo: waveform and log-mel spectrogram of an unseen test recording (screaming).", max_h=2.6 * inch),
+          figure(os.path.join(SCR, "demo_cell11_1.png"), "Live demo: raw softmax scores of the CNN and two fine-tuned AST models for that recording.", max_h=2.2 * inch),
+          figure(os.path.join(SCR, "console_training.png"), "Training demo notebook: one manual step (forward, loss, backward, optimiser step) and a short training loop.", max_h=3.0 * inch),
           figure(os.path.join(rep, "G4_per_class_recall.png"), "Per-class recall of all systems on the source-disjoint test set.",
                  max_h=3.0 * inch)]
 
     doc = SimpleDocTemplate(a.out, pagesize=A4, leftMargin=inch, rightMargin=inch, topMargin=inch, bottomMargin=inch,
-                            title="Machine Learning Lab Project Report", author="[Students]")
+                            title="Machine Learning Lab Project Report", author="Harbani Kaur, Ina Sharma")
     doc.build(s, onFirstPage=page_number, onLaterPages=page_number)
     print("wrote", a.out)
 
