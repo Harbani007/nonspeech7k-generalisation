@@ -7,13 +7,13 @@ set (1,160 clips / 300 recordings), 3 seeds, recording-level bootstrap CIs, mode
 ## Where we are (verified, see STATE.md)
 | Model | Macro-F1 (unseen recordings) | Status |
 |---|---|---|
-| Log-mel CNN from scratch | 0.767 (1 run, CPU, possibly overlapped) | **rerun: Phase 1** |
+| Log-mel CNN from scratch (clean GPU rerun) | standard 0.762, source-balanced 0.792 (3 seeds; +0.030 [+0.005, +0.057]) | **done (Phase 1)** |
 | AST frozen + linear head | 0.777 (3 seeds) | done |
 | AST fine-tuned (ordinary / balanced / contrastive / combined), laptop | 0.788 / 0.821 / 0.784 / 0.822 | done |
 | AST fully fine-tuned (GPU), same four | 0.816 / 0.837 / 0.812 / 0.830 | done |
 | Background probe (vocalisation removed) | fine-tuned AST still 0.27-0.30 (chance <= 0.16) | done; 30 dB gate pending |
 
-## Phase 1: clean CNN rerun (Colab GPU, about 30-45 min)
+## Phase 1: clean CNN rerun (Colab GPU) — DONE 19 Nov, results in docs/results/cnn_gpu/SUMMARY.md
 ```python
 # after the usual setup cell (Drive mounted, WORK defined, repo cloned to /content/ns7k-src, audio unzipped)
 %cd /content/ns7k-src

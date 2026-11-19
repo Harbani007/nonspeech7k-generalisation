@@ -18,10 +18,11 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | **CPU 2x2 (layer 11 only, 3 seeds): contrastive null -0.002 [-0.005, 0.002]; source-balanced +0.035 [0.012, 0.055] (significant)**; GPU shows the same direction for balanced (+0.019) but its CI touches 0 | `docs/results/cpu_k11_final/ast_2x2_effects.csv` |
 | Test errors cluster by recording: error ICC 0.27-0.36 (permutation p < 0.002), design effect about 2, effective test size about half, worst 10% of recordings hold about 80% of errors, clip-bootstrap CIs about 2x too narrow | `docs/results/error_clustering/` |
 | Background probe (20 dB cut, 645 clips): fine-tuned AST full 0.79, vocalisation-only 0.73, background-only 0.27-0.30 (chance <= 0.16), random-cut control 0.66; probe trained on background 0.39 | `docs/results/background_probe/SUMMARY.md` |
+| **Clean CNN rerun (GPU, 3 seeds): standard 0.762 [0.704, 0.812], source-balanced 0.792 [0.741, 0.834]; balanced - standard +0.030 [+0.005, +0.057] (significant)**. Source-balanced sampling now helps in two architectures (CNN +0.030, AST laptop +0.035; AST full FT +0.019 n.s.) | `docs/results/cnn_gpu/SUMMARY.md` |
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
 ## In progress / ready to run
-- Phase 1: clean CNN rerun on Colab (`run_gpu_cnn.sh`; commands in NEXT_PLAN.md).
+- Phase 1 DONE (clean CNN rerun, see results table).
 - Phase 2: background-swap experiment, 30 dB gate first (`colab/BGSWAP_RUN.md`, `docs/PREREGISTRATION_BGSWAP.md`).
 - Phase 3: advanced models (WavLM, Whisper encoder, BEATs) plus the cross-model background probe; not coded yet.
 - Lab report and slides: `report/make_lab_report.py`, `report/make_presentation.py` (regenerate after new results).
