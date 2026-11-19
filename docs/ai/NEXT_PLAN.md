@@ -4,6 +4,12 @@ Goal for the course: a complete, fair **deep-learning comparison** on leakage-sa
 about what the models rely on. All models: same source-disjoint split (`docs/results/splits/splits.csv`), same test
 set (1,160 clips / 300 recordings), 3 seeds, recording-level bootstrap CIs, model selection on validation only.
 
+## Phase 0 (FIRST, approved 19 Nov): test-time background swap, go/no-go
+`docs/PREREGISTRATION_SWAP_PROBE.md`, `swap_probe.py`, `colab/SWAP_PROBE_RUN.md` (about 1 Colab session, no training).
+GO (delta >= 0.05, CI > 0, at 20 and 30 dB) -> Phase 3 (speech models, compared on the same swap test) and
+swap-based training become worth the GPU time. NEGLIGIBLE / INCONCLUSIVE -> reassess with the user before more training.
+After the run: update `professor_demo/RESEARCH_STUDY_GUIDE.md` (beginner explanation of the swap test and its result).
+
 ## Where we are (verified, see STATE.md)
 | Model | Macro-F1 (unseen recordings) | Status |
 |---|---|---|
