@@ -715,8 +715,55 @@ That's a built-in sanity check.
 Per website (descriptive only, no CI): Aigei 0.780-0.802, Freesound 0.813-0.849. YouTube has only one test source,
 so its numbers mean nothing.
 
-### B. CPU experiment (layer 11 only) 🏃 seeds 1-2 still running; filled in when finished
+### B. CPU experiment (layer 11 only, laptop) ✅ VERIFIED, 3 seeds
+| Condition | test macro-F1 [95% CI] |
+|---|---|
+| ordinary | 0.788 [0.720, 0.845] |
+| source-balanced | 0.821 [0.762, 0.865] |
+| cross-source contrastive | 0.784 [0.715, 0.841] |
+| combined | 0.822 [0.764, 0.866] |
 
+| Effect | estimate [95% CI] | supported? |
+|---|---|---|
+| H1 contrastive main effect | -0.002 [-0.005, +0.002] | **no** (null, replicated) |
+| H2 source-balanced main effect | **+0.035 [+0.012, +0.055]** | **yes, on this setup** |
+| H3 interaction | +0.005 [-0.002, +0.012] | no |
+
+**Both experiments together:** the contrastive term never helps (null twice). Source-balanced sampling helps
+significantly when only the last layer is trained (+3.5 points), and points the same way with full fine-tuning
+(+1.9) without reaching significance. Honest summary: *sampling by recording helps a little; the contrastive objective does not.*
+Source clustering stays at 0.72 for every model (chance 0.076).
+
+### C. Errors cluster by recording ✅ VERIFIED (`../error_clustering.py`, `../docs/results/error_clustering/`)
+For every model (CNN, frozen AST + LR, fine-tuned AST, handcrafted features), whether a test clip is misclassified
+depends strongly on its recording: intraclass correlation of errors 0.18-0.36 (permutation p < 0.002; shuffled
+baseline about 0). Consequences:
+- the effective test size is about half the clip count (design effect about 2);
+- the worst 10% of recordings hold about 80% of all errors;
+- confidence intervals computed over clips (common practice) are **about 2x too narrow** (e.g. 0.055 vs 0.127 wide).
+In plain words: *accuracy on Nonspeech7k is mostly decided by a few hard recordings, and reporting by clip overstates certainty.*
+
+### D. What is the model listening to? (background probe) ✅ VERIFIED (Colab, 3 seeds; `../docs/results/background_probe/`)
+Each test clip (recordings never seen in training) in four versions: full; **background only** (everything within 20 dB
+of the loudest moment, +/-50 ms, cut out); **vocalisation only**; **random** (same amount cut elsewhere, a control).
+645 clips / 186 recordings. Macro-F1:
+
+| model | full | background only | vocalisation only | random cut | chance (95th pct) |
+|---|---|---|---|---|---|
+| fine-tuned AST (ordinary) | 0.79 | **0.30** [0.26, 0.34] | 0.73 | 0.67 | 0.14 |
+| fine-tuned AST (4 conditions, range) | 0.78-0.80 | 0.27-0.30 | 0.73-0.74 | 0.66-0.67 | 0.13-0.16 |
+| linear probe trained on background only | - | **0.39** [0.33, 0.44] | - | - | 0.16 |
+
+What it means:
+1. **The models mainly listen to the vocalisation.** The vocalisation alone keeps about 93% of the full score; cutting it
+   out costs about 0.5 macro-F1, and cutting the same amount elsewhere costs only about 0.13.
+2. **But what remains after cutting it out still identifies the class about 2x above chance**, on unseen recordings
+   (0.30 vs <= 0.16), and a classifier trained only on that leftover audio reaches 0.39.
+3. Caution: "background" here means audio at least 20 dB quieter than the vocalisation peak. It can still contain faint
+   vocalisation (breath tails, onsets). With a looser 10 dB cut the leftover scores 0.44-0.49, so stricter removal lowers
+   it; a 30 dB run would show whether it keeps falling toward chance (true vocalisation residue) or plateaus (context).
+4. Source-balanced models score slightly lower on background-only audio (0.27 vs 0.30). That fits less use of context,
+   but it's not tested statistically; treat it as a lead, not a finding.
 
 ---
 
@@ -734,7 +781,8 @@ so its numbers mean nothing.
    0.056 [0.035, 0.075]), with everything else matched. I retracted my earlier claim that AST is less robust than handcrafted features.
 6. I fine-tuned a pretrained AST (last transformer layer + new head, 7.1 M weights; gradients and weight changes are logged)
    and tested source-balanced sampling and a cross-source contrastive loss in a controlled 2 x 2 design, pre-registered.
-   **Result (full fine-tuning on GPU, 3 seeds): no detectable effect.** Contrastive -0.006 [-0.013, +0.002];
+   **Result: the contrastive term gave no gain in either experiment (laptop and GPU); source-balanced sampling gave +3.5 points
+   on the laptop setup (CI excludes 0) and +1.9 with full fine-tuning (CI touches 0). GPU details:** Contrastive -0.006 [-0.013, +0.002];
    source-balanced +0.019 [-0.002, +0.038]; neither interval excludes zero. A null result, reported as pre-registered.
 7. Fine-tuned AST embeddings still cluster by recording: a test clip's nearest same-class neighbour is from its own
    recording 70-72% of the time vs 7.6% chance, and the contrastive loss did not change this. That explains *why* it did not

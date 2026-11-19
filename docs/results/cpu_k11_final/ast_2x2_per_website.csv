@@ -1,0 +1,13 @@
+system,website,clips,sources,classes,macro_f1
+AST-FT ordinary,aigei,272,92,5,0.7532428127344174
+AST-FT ordinary,freesound,796,210,7,0.8019207540561664
+AST-FT ordinary,youtube,92,1,1,0.9173196860728247
+AST-FT source-balanced,aigei,272,92,5,0.751104300117766
+AST-FT source-balanced,freesound,796,210,7,0.8419788304674901
+AST-FT source-balanced,youtube,92,1,1,0.9340252148039312
+AST-FT cross-source contrastive,aigei,272,92,5,0.7453302490859661
+AST-FT cross-source contrastive,freesound,796,210,7,0.7973602727649731
+AST-FT cross-source contrastive,youtube,92,1,1,0.9194050027236247
+AST-FT combined,aigei,272,92,5,0.7593017428367835
+AST-FT combined,freesound,796,210,7,0.8412211021473955
+AST-FT combined,youtube,92,1,1,0.9217686157816413

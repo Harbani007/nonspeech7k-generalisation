@@ -207,3 +207,16 @@ website mix differs). Macro-F1 over the classes the held-out website can score:
 - The loss is class-specific. Aigei held out: crying recall drops 0.18 (AST), other classes <= 0.03. Freesound held
   out: yawn 0.11, laugh 0.09, crying 0.08, screaming 0.08.
 - Breath can never be scored (one website), and YouTube only for laugh, so this test covers 5-6 of 7 classes.
+
+## 9. Robustness check of the duplicate scores (19 Nov)
+
+`find_duplicates.peak_xcorr` divides the peak cross-correlation of whole-clip-standardised signals by the shorter
+clip's length, which is not bounded by 1 when clips differ in length or loudness profile (33 of 137 confirmed pairs
+scored > 1). `recheck_duplicates.py` recomputes every candidate with a bounded score: cosine similarity of the
+overlapping segments at each lag (overlap >= half the shorter clip and >= 10% of each clip's energy).
+
+- 133 of the 137 confirmed pairs also score >= 0.9 (136 >= 0.8; minimum 0.77). Random-pair control: max 0.31.
+- Applying the bounded score at 0.9 to all 277 candidates would confirm 151 pairs (54 cross-website, 24 across the
+  official split, 1 label conflict); agreement with the original status: 255/277.
+- The splits and all experiments keep the original merge (137 pairs). The difference (about 4 pairs fewer, 18 more)
+  is negligible relative to 1,503 groups. Outputs: `docs/results/audit/duplicates_recheck*.csv`.

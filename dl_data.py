@@ -106,23 +106,31 @@ def logmel(x32k, fb):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--meta-train", required=True)
-    ap.add_argument("--meta-test", required=True)
+    ap.add_argument("--meta-train")
+    ap.add_argument("--meta-test")
     ap.add_argument("--audio-root", required=True)
-    ap.add_argument("--duplicates", required=True)
+    ap.add_argument("--duplicates")
+    ap.add_argument("--splits", help="reuse an existing splits.csv (docs/results/splits/splits.csv): only build log-mels")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     from common import index_audio
     from features import load_mono
 
-    meta = load_meta_merged(a.meta_train, a.meta_test, a.duplicates)
-    sp = make_splits(meta)
-    full = meta.merge(sp, on="filename")
-    for col in ("source_disjoint", "official_dedup"):
-        check_disjoint(full, col)
-    full[["filename", "y", "cls", "group", "source", "split", "source_disjoint", "official", "official_dedup"]] \
-        .to_csv(os.path.join(a.out, "splits.csv"), index=False)
+    if a.splits:  # reuse the committed split exactly (same row order as the original logmel.npy)
+        full = pd.read_csv(a.splits)
+        for col in ("source_disjoint", "official_dedup"):
+            check_disjoint(full, col)
+        full.to_csv(os.path.join(a.out, "splits.csv"), index=False)
+        print("reusing", a.splits, len(full), "clips")
+    else:
+        meta = load_meta_merged(a.meta_train, a.meta_test, a.duplicates)
+        sp = make_splits(meta)
+        full = meta.merge(sp, on="filename")
+        for col in ("source_disjoint", "official_dedup"):
+            check_disjoint(full, col)
+        full[["filename", "y", "cls", "group", "source", "split", "source_disjoint", "official", "official_dedup"]] \
+            .to_csv(os.path.join(a.out, "splits.csv"), index=False)
     for col in ("source_disjoint", "official", "official_dedup"):
         t = full.groupby([col, "cls"]).agg(clips=("filename", "size"), sources=("group", "nunique")).unstack(0)
         print(f"\n{col}\n{t}")

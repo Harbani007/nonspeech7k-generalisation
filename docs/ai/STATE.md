@@ -1,6 +1,6 @@
 # Project state (handoff) — 19 Nov 2026
 
-Read this first in a new session. Then `professor_demo/RESEARCH_STUDY_GUIDE.md` (START HERE, Ch. 13, professor section),
+Read this first in a new session, then **docs/ai/NEXT_PLAN.md** (what to do next, in order). Then `professor_demo/RESEARCH_STUDY_GUIDE.md` (START HERE, Ch. 13, professor section),
 `RESULTS.md` sections 7-8, `docs/PREREGISTRATION.md`, `docs/NOVELTY_AUDIT.md`.
 
 ## Research question
@@ -15,13 +15,18 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Leave-one-website-out (frozen AST + LR, recordings-matched): gap Aigei 0.057 [0.043, 0.072], Freesound 0.056 [0.035, 0.075] | `docs/results/website_holdout/` |
 | **GPU full fine-tuning 2x2 (Colab, FREEZE_K=0, 3 seeds): null.** contrastive -0.006 [-0.013, 0.002]; balanced +0.019 [-0.002, 0.038] | `docs/results/colab_k0_pc200/` |
 | Test embeddings cluster by recording: same-recording nearest neighbour 70-72% vs 7.6% chance, for all models, including contrastive | `docs/results/colab_k0_pc200/G9_*.csv` |
+| **CPU 2x2 (layer 11 only, 3 seeds): contrastive null -0.002 [-0.005, 0.002]; source-balanced +0.035 [0.012, 0.055] (significant)**; GPU shows the same direction for balanced (+0.019) but its CI touches 0 | `docs/results/cpu_k11_final/ast_2x2_effects.csv` |
+| Test errors cluster by recording: error ICC 0.27-0.36 (permutation p < 0.002), design effect about 2, effective test size about half, worst 10% of recordings hold about 80% of errors, clip-bootstrap CIs about 2x too narrow | `docs/results/error_clustering/` |
+| Background probe (20 dB cut, 645 clips): fine-tuned AST full 0.79, vocalisation-only 0.73, background-only 0.27-0.30 (chance <= 0.16), random-cut control 0.66; probe trained on background 0.39 | `docs/results/background_probe/SUMMARY.md` |
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
-## In progress when this was written
-- CPU 2x2 (layer 11 only, cached tokens) on the old laptop: 9 of 15 runs done (seeds 0-1; seed 2 running).
-  Interim per-run lines: `docs/results/cpu_k11_interim/ast_suite.log`. This run needs the token cache
-  (`results/v3/ast_cache`, 7 GB, not in git) and can only be finished on the old laptop, or redone with
-  `ast_finetune.py cache` (about 1-2 h CPU) and `run_ast_suite.sh`. It is a replication; the GPU run already answers the question.
+## In progress / ready to run
+- Phase 1: clean CNN rerun on Colab (`run_gpu_cnn.sh`; commands in NEXT_PLAN.md).
+- Phase 2: background-swap experiment, 30 dB gate first (`colab/BGSWAP_RUN.md`, `docs/PREREGISTRATION_BGSWAP.md`).
+- Phase 3: advanced models (WavLM, Whisper encoder, BEATs) plus the cross-model background probe; not coded yet.
+- Lab report and slides: `report/make_lab_report.py`, `report/make_presentation.py` (regenerate after new results).
+- Background probe at 30 dB (does background-only performance plateau above chance, i.e. context, or fall to chance, i.e. vocalisation residue?): `background_probe.py --fg-db 30`.
+- EXPLORATORY: recording-adversarial AST (`--adv`, `run_gpu_adv.sh`), also in `colab/MORNING_RUN.md`.
 
 ## How to run on a new machine
 ```bash
