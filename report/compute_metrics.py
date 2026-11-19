@@ -7,7 +7,7 @@ from dl_data import CLASSES
 from dl_metrics import confusion
 
 SYSTEMS = [("Spectral features + LR", "ml_spec_source_disjoint"), ("Structure features + LR", "ml_struct-nf_source_disjoint"),
-           ("Frozen AST embedding + LR", "ml_ast_source_disjoint"), ("Log-mel CNN (from scratch)*", "cnn_source_disjoint_standard_s0"),
+           ("Frozen AST embedding + LR", "ml_ast_source_disjoint"),
            ("AST frozen + linear head", "ast_frozen_source_disjoint_standard_s*"), ("AST fine-tuned: ordinary", "ast_ft_source_disjoint_standard_s*"),
            ("AST fine-tuned: source-balanced", "ast_ft_source_disjoint_source_s*"), ("AST fine-tuned: contrastive", "ast_ftsc_source_disjoint_standard_s*"),
            ("AST fine-tuned: combined", "ast_ftsc_source_disjoint_source_s*")]
@@ -33,6 +33,17 @@ for name, pat in SYSTEMS:
     for i, c in enumerate(CLASSES):
         per.append(dict(system=name, cls=c, precision=np.mean([x[1][i] for x in m]), recall=np.mean([x[2][i] for x in m]),
                         f1=np.mean([x[3][i] for x in m]), support=int(m[0][4][i].sum())))
+# clean CNN rerun (Colab GPU, 3 seeds): per-seed accuracy / macro-F1 / balanced accuracy (= macro recall) transcribed in
+# docs/results/cnn_gpu/; per-clip predictions stay on Colab, so macro precision is not available for these rows.
+cs = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "results", "cnn_gpu", "cnn_seed_metrics.csv"))
+cnn_rows = [dict(system=n, seeds=len(g), test_clips=1160, accuracy=g.accuracy.mean(), macro_precision=np.nan,
+                 macro_recall=g.balanced_accuracy.mean(), macro_f1=g.macro_f1.mean(), macro_f1_sd=g.macro_f1.std(ddof=0))
+            for n, g in cs.groupby("system", sort=False)]
+# macro-F1 from dl_report.py on the full-precision predictions (docs/results/cnn_gpu/SUMMARY.md), not the 3-decimal seed values
+for r in cnn_rows:
+    r["macro_f1"] = {"Log-mel CNN (from scratch)": 0.762, "Log-mel CNN, source-balanced": 0.792}[r["system"]]
+k = [i for i, r in enumerate(rows) if r["system"] == "Frozen AST embedding + LR"][0] + 1
+rows = rows[:k] + cnn_rows + rows[k:]
 R = pd.DataFrame(rows); R.to_csv(os.path.join(a.out, "metrics_summary.csv"), index=False)
 pd.DataFrame(per).to_csv(os.path.join(a.out, "metrics_per_class.csv"), index=False)
 pd.set_option("display.width", 200); print(R.round(3).to_string(index=False))

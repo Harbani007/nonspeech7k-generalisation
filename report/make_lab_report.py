@@ -167,8 +167,8 @@ def main():
         "pre-registered 2 x 2 experiment (source-balanced sampling x cross-source supervised contrastive loss) with three seeds, "
         f"on a CPU and with full fine-tuning on a GPU. Fine-tuned AST reaches a macro-F1 of {f1['AST fine-tuned: combined']:.3f} "
         f"(accuracy {M.set_index('system').accuracy['AST fine-tuned: combined']:.3f}) on recordings never seen in training. "
-        "Holding out a whole website costs about 0.06 macro-F1. Source-balanced sampling helps modestly (+0.035, significant in "
-        "the CPU experiment), the contrastive loss does not. Test errors cluster strongly by recording, so clip-level confidence "
+        "Holding out a whole website costs about 0.06 macro-F1. Source-balanced sampling helps modestly in two architectures "
+        "(CNN +0.030, AST +0.035, both significant), the contrastive loss does not. Test errors cluster strongly by recording, so clip-level confidence "
         "intervals are about two times too narrow. Removing the vocalisation from a clip drops performance to about twice chance, "
         "showing that the models mainly, but not only, listen to the vocalisation itself."), PageBreak()]
 
@@ -341,8 +341,11 @@ def main():
     for _, r in M.iterrows():
         rows.append([r.system, int(r.seeds), f"{r.accuracy:.3f}", f"{r.macro_precision:.3f}", f"{r.macro_recall:.3f}",
                      f"{r.macro_f1:.3f}" + (f" &plusmn; {r.macro_f1_sd:.3f}" if r.seeds > 1 else "")])
+        if pd.isna(r.macro_precision):
+            rows[-1][3] = "n/a*"
     s += [table(rows, "Source-disjoint test set (1,160 clips, 300 recordings). Precision, recall and F1 are macro-averaged; "
-                      "values are means over seeds (&plusmn; SD). *CNN: single run, indicative only.",
+                      "values are means over seeds (&plusmn; SD). *CNN rows: clean GPU rerun (3 seeds); recall = balanced accuracy, "
+                      "precision not available because the per-clip predictions remain on Colab.",
                 widths=[2.3 * inch, 0.5 * inch, 0.75 * inch, 0.75 * inch, 0.7 * inch, 1.0 * inch]),
           P("Pretrained AST features are far stronger than handcrafted features (macro-F1 0.85 versus 0.45-0.50). Fine-tuning "
             "AST with source-balanced sampling gives the best fine-tuned results (0.82). The logistic regression on frozen AST "
@@ -372,7 +375,7 @@ def main():
     s += [table(rows, "Effects on test macro-F1 with 95% recording-level bootstrap intervals (3 seeds per condition).",
                 widths=[2.0 * inch, 2.1 * inch, 2.1 * inch]),
           P("Source-balanced sampling improved macro-F1 by 3.5 points in the laptop experiment (interval excludes zero) and "
-            "pointed the same way with full fine-tuning (+1.9 points, interval just touching zero). The contrastive loss had no "
+            "pointed the same way with full fine-tuning (+1.9 points, interval just touching zero). The same effect was found for the CNN trained from scratch (clean rerun, 3 seeds): source-balanced sampling raised macro-F1 from 0.762 [0.704, 0.812] to 0.792 [0.741, 0.834], a gain of +0.030 [+0.005, +0.057]. The contrastive loss had no "
             "detectable effect in either experiment, although it was verifiably active during training. A diagnostic explains "
             "why: for every model, the nearest same-class neighbour of a test clip comes from the <i>same recording</i> 70-72% of "
             "the time, against 7.6% by chance, and the contrastive loss does not change this (Figure 6).")]
@@ -415,7 +418,8 @@ def main():
             "source-disjoint split. The best fine-tuned AST recognises the seven vocalisations in unseen recordings with a macro-F1 "
             f"of about {f1['AST fine-tuned: combined']:.2f} (accuracy {M.set_index('system').accuracy['AST fine-tuned: combined']:.2f}), "
             "and pretrained transformers clearly outperform handcrafted features. The main findings are: (1) website shift costs "
-            "about 6 macro-F1 points; (2) source-balanced sampling helps a little, the cross-source contrastive loss does not, and "
+            "about 6 macro-F1 points; (2) source-balanced sampling helps a little and consistently, for both the CNN (+0.030) and "
+            "AST (+0.035), while the cross-source contrastive loss does not, and "
             "learned representations stay strongly organised by recording; (3) errors cluster by recording, so clip-level "
             "reporting overstates certainty about two-fold; (4) models mainly use the vocalisation, but the remaining audio still "
             "carries class information. Together these give a more reliable picture of how well vocalisation classifiers "

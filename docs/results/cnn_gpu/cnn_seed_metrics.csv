@@ -1,0 +1,7 @@
+system,seed,accuracy,macro_f1,balanced_accuracy,best_epoch
+Log-mel CNN (from scratch),0,0.754,0.759,0.804,25
+Log-mel CNN (from scratch),1,0.750,0.751,0.808,23
+Log-mel CNN (from scratch),2,0.787,0.776,0.816,21
+"Log-mel CNN, source-balanced",0,0.791,0.787,0.809,21
+"Log-mel CNN, source-balanced",1,0.813,0.811,0.831,23
+"Log-mel CNN, source-balanced",2,0.784,0.776,0.815,23

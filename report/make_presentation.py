@@ -82,7 +82,8 @@ def build_tables(R, T):
                             highlight_rows=[i for i, f in enumerate(d.features) if f == "frozen AST"])
 
     m = pd.read_csv(os.path.join(HERE, "metrics_summary.csv"))
-    d = pd.DataFrame({"model": m.system, "accuracy": m.accuracy.round(3), "precision": m.macro_precision.round(3),
+    d = pd.DataFrame({"model": m.system, "accuracy": m.accuracy.round(3),
+                      "precision": [("n/a" if pd.isna(v) else round(v, 3)) for v in m.macro_precision],
                       "recall": m.macro_recall.round(3), "F1 (macro)": m.macro_f1.round(3), "seeds": m.seeds})
     tabs["models"] = table_png(d, os.path.join(T, "t_models.png"), [3.0, 1, 1, 1, 1, 0.7], fontsize=10.5,
                                highlight_rows=[len(d) - 1, len(d) - 3])
@@ -94,8 +95,9 @@ def build_tables(R, T):
     cpu = eff(os.path.join(R, "report", "ast_2x2_effects.csv"))
     gpu = eff(os.path.join(REPO, "docs", "results", "colab_k0_pc200", "ast_2x2_effects.csv"))
     d = pd.DataFrame({"effect on macro-F1": ["source-balanced sampling", "cross-source contrastive loss", "both together (interaction)"],
-                      "laptop: last layer trained": cpu, "GPU: all 12 layers trained": gpu})
-    tabs["eff"] = table_png(d, os.path.join(T, "t_eff.png"), [2.4, 2.2, 2.2], highlight_rows=[0])
+                      "CNN from scratch (GPU)": ["+0.030 [+0.005, +0.057]", "not tested", "not tested"],
+                      "AST, last layer (laptop)": cpu, "AST, all 12 layers (GPU)": gpu})
+    tabs["eff"] = table_png(d, os.path.join(T, "t_eff.png"), [2.4, 2.0, 2.2, 2.2], highlight_rows=[0])
 
     ec = pd.read_csv(os.path.join(R, "error_clustering.csv"))
     ecm = pd.read_csv(os.path.join(R, "error_clustering_ml.csv"))
@@ -146,17 +148,17 @@ def slides(R, T, tabs):
              notes="If the model never hears a website, it loses about 6 macro-F1 points, with everything else matched. "
                    "Source: website_holdout_recordings.csv."),
         dict(title="Model comparison (test = unseen recordings)", imgs=[tabs["models"]],
-             bullets=["Handcrafted features about 0.45 F1; CNN from scratch 0.77; fine-tuned AST up to 0.82",
+             bullets=["Handcrafted features about 0.45 F1; CNN from scratch 0.76 (0.79 with source-balanced sampling); fine-tuned AST up to 0.82",
                       "Frozen AST + LR (0.85) used 10 s inputs and about 4x more training clips: not a like-for-like comparison"],
-             notes="Precision, recall and F1 are macro-averaged. Fine-tuned transformer is the best like-for-like model. Source: metrics_summary.csv."),
+             notes="Precision, recall and F1 are macro-averaged. CNN rows: clean GPU rerun, 3 seeds; precision not available (n/a). Source: metrics_summary.csv."),
         dict(title="Where the models go wrong", imgs=[os.path.join(rep, "G3_confusion_matrices.png")],
              bullets=["Crying is the hardest class, mostly confused with laughter"],
              notes="Row-normalised confusion matrices over 3 seeds."),
         dict(title="Training: loss falls, validation F1 rises", imgs=[os.path.join(T, "learning_curves_2x2.png")],
              bullets=["4 training recipes x 3 seeds each; gradients and weight changes of the pretrained layers were logged"],
              notes="Every run trained properly; we checked that the pretrained transformer weights really changed."),
-        dict(title="Our experiment: does source-aware training help?", imgs=[os.path.join(rep, "G6_ast_2x2_source_aware_training.png"), tabs["eff"]],
-             bullets=["Sampling by recording helps a little (+3.5 points on the laptop, significant; +1.9 on GPU)",
+        dict(title="Our experiment: does source-aware training help?", imgs=[tabs["eff"]],
+             bullets=["Sampling by recording helps in two architectures: CNN +3.0 and AST +3.5 points (both significant; AST on GPU +1.9)",
                       "The cross-source contrastive loss does NOT help, in either experiment (reported as a null result)"],
              notes="Two fixes in a 2x2 design, rules fixed before running. Sampling by recording helped modestly; the contrastive loss "
                    "did nothing. Source: ast_2x2_effects.csv (laptop and Colab)."),
@@ -177,7 +179,7 @@ def slides(R, T, tabs):
              notes="Optional: open professor_demo/LIVE_DL_DEMO_executed.ipynb."),
         dict(title="Conclusions and limitations",
              bullets=["Website shift is real (about 6 macro-F1 points)",
-                      "Sampling by recording helps a little; cross-source contrastive learning does not",
+                      "Sampling by recording helps consistently (CNN and AST); cross-source contrastive learning does not",
                       "Errors cluster by recording: report results per recording, not per clip",
                       "Models mainly listen to the vocalisation, but leftover audio still reveals the class",
                       "Limits: one dataset, small training budget, the contrastive method is not new (applied under strict controls)"],
