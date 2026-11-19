@@ -3,8 +3,14 @@
 Read this first in a new session, then **docs/ai/NEXT_PLAN.md** (what to do next, in order). Then `professor_demo/RESEARCH_STUDY_GUIDE.md` (START HERE, Ch. 13, professor section),
 `RESULTS.md` sections 7-8, `docs/PREREGISTRATION.md`, `docs/NOVELTY_AUDIT.md`.
 
-## Research question
-Does source-aware training (source-balanced sampling, cross-source supervised contrastive loss) improve a fine-tuned AST
+## Research question (changed 19 Nov 2026)
+**Current:** what do the trained models rely on: the vocalisation, or the recording background around it?
+Next experiment (highest priority, approved): test-time background swap on the existing AST checkpoints,
+`swap_probe.py`, pre-registered in `docs/PREREGISTRATION_SWAP_PROBE.md` (commit f154c4f, before any result),
+Colab steps in `colab/SWAP_PROBE_RUN.md`. Go/no-go decides whether Whisper/WavLM and swap-based training are worth running.
+Do NOT start Whisper/WavLM or swap training before the primary swap result is reviewed with the user.
+
+**Earlier (answered, mostly null):** does source-aware training (source-balanced sampling, cross-source supervised contrastive loss) improve a fine-tuned AST
 on Nonspeech7k recordings never seen in training? Motivation: website shift exists after corrected source grouping.
 
 ## Verified results (evidence in `docs/results/`)
@@ -22,6 +28,15 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
 ## In progress / ready to run
+- **Phase 0 (now): background-swap probe on Colab** (`run_gpu_swap.sh`, `colab/SWAP_PROBE_RUN.md`). Built and
+  smoke-tested on the laptop CPU checkpoints (all 12 load; 'orig' reproduces stored test predictions 1.0); GPU run
+  not done; needs a push of this branch (the user pushes). Pre-registration amendment 1 (commit cdee4ce): edge-held
+  masks. The smoke check found that `masks_for` leaked ~10 ms of vocalisation at clip edges at about half amplitude
+  (zero-padded ramp + unmarked tail samples). The fix is opt-in (`edge_hold=True`), so the PUBLISHED background-probe
+  numbers and the cached training masks still carry this small edge leak: a limitation to state when citing them.
+  A full CPU (layer-11) swap run would take about 5 h on this laptop (7 targets x 3 models = 174 s); not run.
+- Whisper note: transformers' WhisperEncoder refuses inputs other than 3000 mel frames (modeling_whisper.py),
+  so 4 s inputs need either 30 s padding (faithful) or a validated positional-embedding cut. Not decided.
 - Phase 1 DONE (clean CNN rerun, see results table).
 - Phase 2: background-swap experiment, 30 dB gate first (`colab/BGSWAP_RUN.md`, `docs/PREREGISTRATION_BGSWAP.md`).
 - Phase 3: advanced models (WavLM, Whisper encoder, BEATs) plus the cross-model background probe; not coded yet.

@@ -49,8 +49,11 @@ SR = 16000
 VARIANTS = ["full", "background", "foreground", "random"]
 
 
-def masks_for(x, fg_db, dilate_ms, rng):
-    """Return (fg_gain, random_gain, fg_fraction) for a 16 kHz waveform."""
+def masks_for(x, fg_db, dilate_ms, rng, edge_hold=False):
+    """Return (fg_gain, random_gain, fg_fraction) for a 16 kHz waveform.
+    edge_hold=False (used for all results up to 19 Nov 2026): the 10 ms edge ramp pads the clip ends with zeros, so a
+    vocalisation that touches the start/end of the clip gets a gain of only about 0.5 in its first/last ~10 ms.
+    edge_hold=True pads with the mask's edge value instead, so the gain stays 1 there (used by swap_probe.py)."""
     win, hop = 400, 160
     n = len(x)
     nfr = max(1, 1 + (n - win) // hop)
@@ -65,7 +68,14 @@ def masks_for(x, fg_db, dilate_ms, rng):
         m[i * hop:min(n, i * hop + win)] = 1.0
     ramp = np.hanning(2 * 160 + 1)
     ramp /= ramp.sum()
-    g = np.clip(np.convolve(m, ramp, mode="same"), 0, 1)
+    if edge_hold:
+        end = (nfr - 1) * hop + win  # samples after the last full frame belong to no frame: give them its state
+        if end < n:
+            m[end:] = float(fr[-1])
+        h = len(ramp) // 2
+        g = np.clip(np.convolve(np.pad(m, h, mode="edge"), ramp, mode="valid"), 0, 1)
+    else:
+        g = np.clip(np.convolve(m, ramp, mode="same"), 0, 1)
     shift = int(rng.integers(n // 4, 3 * n // 4 + 1))
     return g, np.roll(g, shift), float(m.mean())
 
