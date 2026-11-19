@@ -17,9 +17,8 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Test embeddings cluster by recording: same-recording nearest neighbour 70-72% vs 7.6% chance, for all models, including contrastive | `docs/results/colab_k0_pc200/G9_*.csv` |
 | **CPU 2x2 (layer 11 only, 3 seeds): contrastive null -0.002 [-0.005, 0.002]; source-balanced +0.035 [0.012, 0.055] (significant)**; GPU shows the same direction for balanced (+0.019) but its CI touches 0 | `docs/results/cpu_k11_final/ast_2x2_effects.csv` |
 | Test errors cluster by recording: error ICC 0.27-0.36 (permutation p < 0.002), design effect about 2, effective test size about half, worst 10% of recordings hold about 80% of errors, clip-bootstrap CIs about 2x too narrow | `docs/results/error_clustering/` |
-| Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
-
 | Background probe (20 dB cut, 645 clips): fine-tuned AST full 0.79, vocalisation-only 0.73, background-only 0.27-0.30 (chance <= 0.16), random-cut control 0.66; probe trained on background 0.39 | `docs/results/background_probe/SUMMARY.md` |
+| Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
 ## In progress / ready to run
 - Background probe at 30 dB (does background-only performance plateau above chance, i.e. context, or fall to chance, i.e. vocalisation residue?): `background_probe.py --fg-db 30`.
