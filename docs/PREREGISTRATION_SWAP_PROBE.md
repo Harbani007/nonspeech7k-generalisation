@@ -90,3 +90,15 @@ The 0.05 and 0.02 thresholds are practical-effect choices made for this study, n
   third. The listening set and the residue audit are there to make this visible, not to prove it absent.
 - Any effect is the model's response to this specific manipulation on 4 s clips of Nonspeech7k test recordings.
 - A GO does not show that background reliance hurts accuracy on natural recordings; it shows sensitivity.
+
+## Amendment 1 (19 Nov 2026, after the CPU smoke test on 14 targets, before any full or GPU run)
+The smoke test's mask check found leftover vocalisation in donor backgrounds, all of it at the clip edges:
+`masks_for` smooths the mask with a convolution that zero-pads the clip ends (and leaves up to 159 samples after the
+last full frame unmarked), so a vocalisation touching the clip start/end kept about half its amplitude for ~10 ms.
+Before the fix, 6.5% (20 dB) and 33% (30 dB) of donor backgrounds had a frame above the cut threshold; after it, 0% and 0%.
+Change: `swap_probe.py` uses `masks_for(..., edge_hold=True)` (the edge value is held instead of zero-padded). The old
+behaviour stays the default, so the published background-probe numbers and the cached training masks are unchanged
+(they carry this small edge leak; noted as a limitation of the earlier probe).
+Consequences, fixed now: 643 eligible targets (was about 645); donor pool 312 clips (breath 7 clips from 6
+recordings, screaming 14 from 8: same-class donors for these classes are reused often; reported, not changed).
+Nothing else changes: hypotheses, models, metrics, thresholds and the decision rule are as above.
