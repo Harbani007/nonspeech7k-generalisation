@@ -111,6 +111,8 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="debug: only the first N clips of each partition")
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--examples", type=int, default=2, help="example wavs per class saved for the demo")
+    ap.add_argument("--compare", nargs=2, metavar=("SYSTEM_A", "SYSTEM_B"),
+                    help="also report paired differences B - A between two systems on every variant")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     dev = torch.device("cuda" if (a.device == "auto" and torch.cuda.is_available()) or a.device == "cuda" else "cpu")
@@ -217,6 +219,14 @@ def main():
                     continue
                 sa, sb, dd, _, _, cd = grouped_bootstrap(yte, A, B, gte, K, n=a.boot)
                 diffs.append(dict(system=system, a=va, b=vb, macro_f1_a=sa, macro_f1_b=sb, b_minus_a=dd,
+                                  ci_lo=cd[0], ci_hi=cd[1], ci_excludes_zero=bool(cd[0] > 0 or cd[1] < 0)))
+    if a.compare:
+        sa_, sb_ = a.compare
+        for v in VARIANTS:
+            if (sa_, v) in preds and (sb_, v) in preds:
+                A, Bp = preds[(sa_, v)], preds[(sb_, v)]
+                ma, mb, dd, _, _, cd = grouped_bootstrap(yte, A, Bp, gte, K, n=a.boot)
+                diffs.append(dict(system=f"{sb_} - {sa_}", a=v, b=v, macro_f1_a=ma, macro_f1_b=mb, b_minus_a=dd,
                                   ci_lo=cd[0], ci_hi=cd[1], ci_excludes_zero=bool(cd[0] > 0 or cd[1] < 0)))
     D = pd.DataFrame(diffs)
     D.to_csv(os.path.join(a.out, "background_probe_paired_differences.csv"), index=False)

@@ -33,6 +33,8 @@ SYSTEMS = [  # (label, run-folder glob relative to runs, role)
     ("AST-FT cross-source contrastive", "ast_ftsc_{p}_standard_s*", "CE + cross-source SupCon"),
     ("AST-FT combined", "ast_ftsc_{p}_source_s*", "CE + SupCon + source-balanced sampling"),
     ("AST-FT recording-adversarial", "ast_ftadv_{p}_standard_s*", "EXPLORATORY: CE + gradient-reversal recording adversary"),
+    ("AST-FT ordinary (waveform input)", "ast_wv_{p}_standard_s*", "control for background swap"),
+    ("AST-FT background-swap", "ast_bgs_{p}_standard_s*", "CE + background-swap augmentation"),
 ]
 AST4 = ["AST-FT ordinary", "AST-FT source-balanced", "AST-FT cross-source contrastive", "AST-FT combined"]
 
@@ -98,6 +100,7 @@ def main():
              ("AST-FT cross-source contrastive", "AST-FT combined", "combined - contrastive"),
              ("AST frozen + linear head", "AST-FT ordinary", "fine-tuned - frozen (AST, same 4 s input)"),
              ("AST-FT ordinary", "AST-FT recording-adversarial", "EXPLORATORY adversarial - ordinary"),
+             ("AST-FT ordinary (waveform input)", "AST-FT background-swap", "background-swap - ordinary (same waveform inputs)"),
              ("CNN (scratch)", "AST-FT ordinary", "AST-FT - CNN"),
              ("CNN (scratch)", "CNN (scratch), source-balanced", "source-balanced - standard (CNN)"),
              ("Structure + LR", "CNN (scratch)", "CNN - structure LR")]

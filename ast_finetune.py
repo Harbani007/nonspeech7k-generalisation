@@ -167,6 +167,50 @@ def cmd_fbank(a):
     print("done", path)
 
 
+WAVE_LEN = 4 * 16000
+
+
+def bg_swap(x, g, donor_x, donor_g):
+    """Background swap: keep clip x's vocalisation (gain g) and replace its background with the donor's background.
+    All arrays have equal length. Returns x*g + donor_x*(1-donor_g)."""
+    return x * g + donor_x * (1.0 - donor_g)
+
+
+def cmd_waves(a):
+    """Store 16 kHz waveforms (4 s, float16) and their vocalisation masks for the selected clips; resumable.
+    Same clip selection as cmd_cache / cmd_fbank. Mask = background_probe.masks_for (frames within --fg-db dB of the
+    loudest frame, dilated by --dilate-ms, 10 ms raised-cosine edges)."""
+    from background_probe import masks_for
+    from common import index_audio
+    from features import load_mono
+    from scipy.signal import resample_poly
+    os.makedirs(a.out, exist_ok=True)
+    sp = pd.read_csv(os.path.join(a.data, "splits.csv"))
+    tr, va, te = select_clips(sp, a.protocol, a.per_class_train, 0)
+    rows = np.concatenate([tr, va, te])
+    part = np.array(["train"] * len(tr) + ["val"] * len(va) + ["test"] * len(te))
+    pd.DataFrame({"row": rows, "part": part, "filename": sp.filename.values[rows]}).to_csv(os.path.join(a.out, "clips.csv"), index=False)
+    paths = {k: os.path.join(a.out, f"{k}.f16") for k in ("waves", "fgmask")}
+    M = {k: np.lib.format.open_memmap(v, mode="r+" if os.path.exists(v) else "w+", dtype=np.float16, shape=(len(rows), WAVE_LEN))
+         for k, v in paths.items()}
+    done_path = paths["waves"] + ".done"
+    start = int(open(done_path).read()) if os.path.exists(done_path) else 0
+    idx = index_audio(a.audio_root)
+    rng = np.random.default_rng(0)
+    t0 = time.time()
+    for i in range(start, len(rows)):
+        x = resample_poly(load_mono(idx[sp.filename.values[rows[i]]])[0], 1, 2).astype(np.float32)
+        x = np.pad(x, (0, max(0, WAVE_LEN - len(x))))[:WAVE_LEN]
+        g, _, _ = masks_for(x, a.fg_db, a.dilate_ms, rng)
+        M["waves"][i], M["fgmask"][i] = x, g
+        if i % 200 == 0 or i == len(rows) - 1:
+            for m in M.values():
+                m.flush()
+            open(done_path, "w").write(str(i + 1))
+            print(f"waves {i + 1}/{len(rows)} ({time.time() - t0:.0f}s)", flush=True)
+    print("done", a.out)
+
+
 def ast_name(n, k):
     """'layers.0.mlp.fc1.weight' inside ASTTop is pretrained AST layer k+0: report it as 'ast_layer_11.mlp...'."""
     if n.startswith("layers."):
@@ -258,7 +302,7 @@ def _train(a, lock):
     torch.manual_seed(a.seed)
     sp = pd.read_csv(os.path.join(a.data, "splits.csv"))
     clips = pd.read_csv(os.path.join(a.cache, "clips.csv"))
-    fname = f"tokens_k{a.freeze_k}.f16" if a.inputs == "cache" else "fbank.f16"
+    fname = {"cache": f"tokens_k{a.freeze_k}.f16", "fbank": "fbank.f16", "wave": "waves.f16"}[a.inputs]
     H = np.load(os.path.join(a.cache, fname), mmap_mode="r")
     assert int(open(os.path.join(a.cache, fname + ".done")).read()) == len(clips), f"{fname} incomplete"
     dev = torch.device("cuda" if (a.device == "auto" and torch.cuda.is_available()) or a.device == "cuda" else "cpu")
@@ -268,8 +312,11 @@ def _train(a, lock):
     info = sp.iloc[clips.row.values].reset_index(drop=True)
     pos = {p: np.where(clips.part.values == p)[0] for p in ("train", "val", "test")}
     y = torch.tensor(info.y.values, dtype=torch.long)
+    if a.inputs == "wave":
+        G = np.load(os.path.join(a.cache, "fgmask.f16"), mmap_mode="r")
+    assert a.bgswap == 0 or a.inputs == "wave", "--bgswap needs --inputs wave"
 
-    _, ast = load_ast()
+    fe, ast = load_ast()
     torch.manual_seed(a.seed)  # same new-head initialisation for every condition at a given seed
     model = ASTTop(ast, a.freeze_k, len(CLASSES))
     proj = nn.Sequential(nn.Linear(768, 768), nn.ReLU(), nn.Linear(768, a.proj_dim))  # built in every condition
@@ -309,6 +356,7 @@ def _train(a, lock):
         adv_head.to(dev)
         total_steps = a.epochs * steps_per_epoch
     gen = torch.Generator().manual_seed(1000 + a.seed)
+    aug_rng = np.random.default_rng(2000 + a.seed)  # background-swap draws (own stream: other conditions unaffected)
     w_before = {n: p.detach().clone() for n, p in model.named_parameters() if not n.startswith("head")}
 
     # ---- resume -----------------------------------------------------------------------------------------------
@@ -324,6 +372,8 @@ def _train(a, lock):
             adv_head.load_state_dict(st["adv_head"])
         opt.load_state_dict(st["opt"]); sched.load_state_dict(st["sched"])
         gen.set_state(st["gen"].cpu()); torch.set_rng_state(st["torch_rng"].cpu())
+        if st.get("aug_rng") is not None:
+            aug_rng.bit_generator.state = st["aug_rng"]
         if "scaler" in st:
             scaler.load_state_dict(st["scaler"])
         hist, best, seen, grad_log, step_log = st["hist"], st["best"], st["seen"], st["grad_log"], st["step_log"]
@@ -333,8 +383,30 @@ def _train(a, lock):
           f"frozen params {n_frozen:,}; train pool {len(dtr)} clips / {dtr.group.nunique()} sources; "
           f"val {len(pos['val'])}; test {len(pos['test'])}; sampler {a.sampler}; supcon {a.supcon} (tau {a.tau})", flush=True)
 
-    def tokens(ix):
-        x = torch.from_numpy(np.asarray(H[ix], np.float32)).to(dev)
+    tr_pool = pos["train"]
+    tr_group = gid.numpy()
+    swap_log = []
+
+    def tokens(ix, augment=False):
+        if a.inputs == "wave":
+            xw = np.asarray(H[ix], np.float32)
+            n_sw = 0
+            if augment and a.bgswap > 0:
+                gw = np.asarray(G[ix], np.float32)
+                for r in range(len(ix)):
+                    if aug_rng.random() < a.bgswap:
+                        for _ in range(20):  # donor from a different recording group
+                            j = int(tr_pool[aug_rng.integers(len(tr_pool))])
+                            if tr_group[j] != tr_group[ix[r]]:
+                                break
+                        xw[r] = bg_swap(xw[r], gw[r], np.asarray(H[j], np.float32), np.asarray(G[j], np.float32))
+                        n_sw += 1
+            if augment:
+                swap_log.append(n_sw / len(ix))
+            fbk = fe(list(xw), sampling_rate=16000, return_tensors="np")["input_values"]
+            x = torch.from_numpy(fbk.astype(np.float32)).to(dev)
+        else:
+            x = torch.from_numpy(np.asarray(H[ix], np.float32)).to(dev)
         if a.inputs == "cache":
             return x  # cached output of the frozen layers 0..K-1
         with torch.no_grad(), torch.autocast(dev.type, dtype=torch.float16, enabled=use_amp):
@@ -368,7 +440,7 @@ def _train(a, lock):
             ib = ix[np.argsort(ix)]  # memmap reads want sorted indices
             yb, gb = y[ib].to(dev), gid[ib].to(dev)
             with torch.autocast(dev.type, dtype=torch.float16, enabled=use_amp):
-                emb = model.pooled(tokens(ib))
+                emb = model.pooled(tokens(ib, augment=True))
                 logits = model.head(emb)
                 zp = proj(emb) if a.supcon > 0 else None
                 if adv_head is not None:
@@ -388,7 +460,7 @@ def _train(a, lock):
                 adv_loss = F.cross_entropy(adv_logits.float(), ab)  # gradient reversal is inside the graph
                 loss = loss + adv_loss
                 adv_acc = float((adv_logits.argmax(1) == ab).float().mean())
-            rec = dict(epoch=ep, step=s, ce=ce.item(), supcon=sc.item() if sc is not None else np.nan,
+            rec = dict(epoch=ep, step=s, bgswap_frac=swap_log[-1] if swap_log else 0.0, ce=ce.item(), supcon=sc.item() if sc is not None else np.nan,
                        loss=loss.item(), cross_source_pairs=n_pairs, anchors_with_positive=frac)
             opt.zero_grad()
             if s == 0 and a.mode == "finetune":
@@ -445,7 +517,7 @@ def _train(a, lock):
                         os.path.join(a.out, "best.pt"))
         atomic_save(dict(model=model.state_dict(), proj=proj.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(),
                          adv_head=adv_head.state_dict() if adv_head is not None else None,
-                         gen=gen.get_state(), torch_rng=torch.get_rng_state(), scaler=scaler.state_dict(), hist=hist, best=best, seen=seen,
+                         gen=gen.get_state(), torch_rng=torch.get_rng_state(), aug_rng=aug_rng.bit_generator.state, scaler=scaler.state_dict(), hist=hist, best=best, seen=seen,
                          grad_log=grad_log, step_log=step_log, epoch=ep, args=run_args), last)
     pd.DataFrame(hist).to_csv(os.path.join(a.out, "history.csv"), index=False)
     pd.DataFrame(step_log).to_csv(os.path.join(a.out, "step_log.csv"), index=False)
@@ -496,6 +568,14 @@ def main():
     fb.add_argument("--protocol", default="source_disjoint")
     fb.add_argument("--per-class-train", type=int, default=200)
     fb.add_argument("--out", required=True)
+    wv = sub.add_parser("waves")
+    wv.add_argument("--data", required=True)
+    wv.add_argument("--audio-root", required=True)
+    wv.add_argument("--protocol", default="source_disjoint")
+    wv.add_argument("--per-class-train", type=int, default=200)
+    wv.add_argument("--fg-db", type=float, default=20.0)
+    wv.add_argument("--dilate-ms", type=float, default=50.0)
+    wv.add_argument("--out", required=True)
     t = sub.add_parser("train")
     t.add_argument("--data", required=True)
     t.add_argument("--cache", required=True)
@@ -514,13 +594,15 @@ def main():
     t.add_argument("--proj-dim", type=int, default=128)
     t.add_argument("--adv", type=float, default=0.0,
                    help="EXPLORATORY: max weight of a recording-identity adversary (gradient reversal, DANN ramp); 0 = off")
-    t.add_argument("--inputs", choices=["cache", "fbank"], default="cache",
+    t.add_argument("--bgswap", type=float, default=0.0,
+                   help="probability of replacing a training clip's background with another recording's (needs --inputs wave)")
+    t.add_argument("--inputs", choices=["cache", "fbank", "wave"], default="cache",
                    help="cache: tokens after frozen layers 0..K-1 (CPU plan); fbank: AST filterbanks, layers run live (GPU)")
     t.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     t.add_argument("--amp", action="store_true", help="fp16 mixed precision on CUDA")
     t.add_argument("--out", required=True)
     a = ap.parse_args()
-    {"cache": cmd_cache, "fbank": cmd_fbank, "train": cmd_train}[a.cmd](a)
+    {"cache": cmd_cache, "fbank": cmd_fbank, "waves": cmd_waves, "train": cmd_train}[a.cmd](a)
 
 
 if __name__ == "__main__":
