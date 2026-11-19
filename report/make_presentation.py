@@ -177,6 +177,14 @@ def slides(R, T, tabs):
         dict(title="Live demo: an unseen scream", imgs=[os.path.join(scr, "demo_cell7_0.png"), os.path.join(scr, "demo_cell11_1.png")],
              bullets=["CNN said crying; both fine-tuned AST models said screaming (raw softmax scores, not calibrated)"],
              notes="Optional: open professor_demo/LIVE_DL_DEMO_executed.ipynb."),
+        dict(title="Work in progress: next experiments (GPU)",
+             bullets=["Today's results are interim: ML baselines, a CNN from scratch and the AST transformer",
+                      "Next 1: background-swap training: does the model stop using the background? (code ready)",
+                      "Next 2: speech-pretrained Whisper and WavLM vs AST, with the same background probe",
+                      "Excluded: voc2vec and CLAP (likely trained on Nonspeech7k)",
+                      "Report and slides will be updated with these results"],
+             notes="Say that today's results are interim and what the next GPU experiments will test. Code for the background-swap "
+                   "experiment is already written and pre-registered; the speech-model comparison is next."),
         dict(title="Conclusions and limitations",
              bullets=["Website shift is real (about 6 macro-F1 points)",
                       "Sampling by recording helps consistently (CNN and AST); cross-source contrastive learning does not",
@@ -209,7 +217,7 @@ def layout(sizes, x0, y0, aw, ah, gap):
 
 TITLE = "Recording Identity, Website Shift and What Deep Models Listen To"
 SUB = "Leakage-safe deep learning for human non-speech vocalisation recognition (Nonspeech7k)"
-WHO = ["Harbani Kaur (1024030848)  |  Ina Sharma (1024030866)", "Submitted to: Ms. Arushi Madaan",
+WHO = ["Interim presentation: results as of 19 November 2026", "Harbani Kaur (1024030848)  |  Ina Sharma (1024030866)", "Submitted to: Ms. Arushi Madaan",
        "Machine Learning Lab  |  Department of Computer Science and Engineering", "Thapar Institute of Engineering and Technology  |  2026-27"]
 
 

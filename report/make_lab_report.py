@@ -430,6 +430,11 @@ def main():
     s += bullets([
         "Repeat the background probe with a stricter 30 dB cut and per-class analysis, to separate background context from "
         "faint vocalisation traces.",
+        "Background-swap training (already implemented and pre-registered): paste each vocalisation onto the background of "
+        "another recording during training and test whether reliance on the background disappears without losing accuracy.",
+        "Compare speech-pretrained models (Whisper encoder, WavLM) with the general-audio AST under the same protocol and "
+        "background probe, to see which pretraining makes a model listen to the vocalisation itself. Models likely trained on "
+        "Nonspeech7k (voc2vec, CLAP) are excluded to avoid test leakage.",
         "Train on the full training set and with longer schedules on a GPU, and tune the contrastive weight on the validation set.",
         "Test whether a recording-adversarial model (gradient reversal) removes recording identity and whether that helps.",
         "Cross-dataset evaluation (for example VocalSound) to check that the findings are not specific to Nonspeech7k.",
