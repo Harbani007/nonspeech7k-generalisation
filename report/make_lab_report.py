@@ -257,7 +257,7 @@ def main():
             "recording keys from filenames, namespaced by website (2,475 IDs reduced to 1,586 recordings). (2) Re-uploaded audio "
             "was found by searching the top-5 AST-embedding neighbours (cosine at least 0.95) and confirming with peak waveform "
             "cross-correlation of at least 0.9: 137 confirmed duplicate pairs (53 across websites, 23 across the official split). "
-            "500 random pairs never exceeded 0.41, so the threshold produced no false positives in this control. Confirmed "
+            "500 random pairs never exceeded 0.41, so the threshold produced no false positives in this control. A re-check with a strictly bounded similarity score confirmed 133 of the 137 pairs. Confirmed "
             "duplicates were merged into one recording group (1,503 groups)."),
           P("5.3 Exploratory data analysis and visualisation", H2),
           P("EDA covered class and website distributions (Table 1), recordings per class and their concentration (Figure 1), "
