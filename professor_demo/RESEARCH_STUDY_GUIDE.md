@@ -743,12 +743,27 @@ baseline about 0). Consequences:
 - confidence intervals computed over clips (common practice) are **about 2x too narrow** (e.g. 0.055 vs 0.127 wide).
 In plain words: *accuracy on Nonspeech7k is mostly decided by a few hard recordings, and reporting by clip overstates certainty.*
 
-### D. Next: what is the model listening to? 🧪 code ready, not run (`../background_probe.py`, `../colab/MORNING_RUN.md`)
-Cut the vocalisation out of each test clip (everything within 20 dB of the loudest frame, +/-50 ms) and ask the
-trained models again, against a control that removes the same amount of audio elsewhere. If they still recognise the
-class above chance on recordings they never heard, the models partly classify the *setting*, not the *sound*.
-Closest prior work: SpurAudio (2026) swaps backgrounds in few-shot audio. Not run on Nonspeech7k before, as far as our quick search went.
+### D. What is the model listening to? (background probe) ✅ VERIFIED (Colab, 3 seeds; `../docs/results/background_probe/`)
+Each test clip (recordings never seen in training) in four versions: full; **background only** (everything within 20 dB
+of the loudest moment, +/-50 ms, cut out); **vocalisation only**; **random** (same amount cut elsewhere, a control).
+645 clips / 186 recordings. Macro-F1:
 
+| model | full | background only | vocalisation only | random cut | chance (95th pct) |
+|---|---|---|---|---|---|
+| fine-tuned AST (ordinary) | 0.79 | **0.30** [0.26, 0.34] | 0.73 | 0.67 | 0.14 |
+| fine-tuned AST (4 conditions, range) | 0.78-0.80 | 0.27-0.30 | 0.73-0.74 | 0.66-0.67 | 0.13-0.16 |
+| linear probe trained on background only | - | **0.39** [0.33, 0.44] | - | - | 0.16 |
+
+What it means:
+1. **The models mainly listen to the vocalisation.** The vocalisation alone keeps about 93% of the full score; cutting it
+   out costs about 0.5 macro-F1, and cutting the same amount elsewhere costs only about 0.13.
+2. **But what remains after cutting it out still identifies the class about 2x above chance**, on unseen recordings
+   (0.30 vs <= 0.16), and a classifier trained only on that leftover audio reaches 0.39.
+3. Caution: "background" here means audio at least 20 dB quieter than the vocalisation peak. It can still contain faint
+   vocalisation (breath tails, onsets). With a looser 10 dB cut the leftover scores 0.44-0.49, so stricter removal lowers
+   it; a 30 dB run would show whether it keeps falling toward chance (true vocalisation residue) or plateaus (context).
+4. Source-balanced models score slightly lower on background-only audio (0.27 vs 0.30). That fits less use of context,
+   but it's not tested statistically; treat it as a lead, not a finding.
 
 ---
 

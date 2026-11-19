@@ -19,9 +19,10 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Test errors cluster by recording: error ICC 0.27-0.36 (permutation p < 0.002), design effect about 2, effective test size about half, worst 10% of recordings hold about 80% of errors, clip-bootstrap CIs about 2x too narrow | `docs/results/error_clustering/` |
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
+| Background probe (20 dB cut, 645 clips): fine-tuned AST full 0.79, vocalisation-only 0.73, background-only 0.27-0.30 (chance <= 0.16), random-cut control 0.66; probe trained on background 0.39 | `docs/results/background_probe/SUMMARY.md` |
+
 ## In progress / ready to run
-- NEW DIRECTION (code ready, tested on CPU subset): `background_probe.py`, i.e. do models still classify vocalisations
-  when the vocalisation is cut out (background only), on unseen recordings? Run on Colab: `colab/MORNING_RUN.md`.
+- Background probe at 30 dB (does background-only performance plateau above chance, i.e. context, or fall to chance, i.e. vocalisation residue?): `background_probe.py --fg-db 30`.
 - EXPLORATORY: recording-adversarial AST (`--adv`, `run_gpu_adv.sh`), also in `colab/MORNING_RUN.md`.
 
 ## How to run on a new machine
