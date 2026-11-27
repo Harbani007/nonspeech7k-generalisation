@@ -4,16 +4,22 @@ Goal for the course: a complete, fair **deep-learning comparison** on leakage-sa
 about what the models rely on. All models: same source-disjoint split (`docs/results/splits/splits.csv`), same test
 set (1,160 clips / 300 recordings), 3 seeds, recording-level bootstrap CIs, model selection on validation only.
 
+## Phase 0 (FIRST, approved 19 Nov): test-time background swap, go/no-go
+`docs/PREREGISTRATION_SWAP_PROBE.md`, `swap_probe.py`, `colab/SWAP_PROBE_RUN.md` (about 1 Colab session, no training).
+GO (delta >= 0.05, CI > 0, at 20 and 30 dB) -> Phase 3 (speech models, compared on the same swap test) and
+swap-based training become worth the GPU time. NEGLIGIBLE / INCONCLUSIVE -> reassess with the user before more training.
+After the run: update `professor_demo/RESEARCH_STUDY_GUIDE.md` (beginner explanation of the swap test and its result).
+
 ## Where we are (verified, see STATE.md)
 | Model | Macro-F1 (unseen recordings) | Status |
 |---|---|---|
-| Log-mel CNN from scratch | 0.767 (1 run, CPU, possibly overlapped) | **rerun: Phase 1** |
+| Log-mel CNN from scratch (clean GPU rerun) | standard 0.762, source-balanced 0.792 (3 seeds; +0.030 [+0.005, +0.057]) | **done (Phase 1)** |
 | AST frozen + linear head | 0.777 (3 seeds) | done |
 | AST fine-tuned (ordinary / balanced / contrastive / combined), laptop | 0.788 / 0.821 / 0.784 / 0.822 | done |
 | AST fully fine-tuned (GPU), same four | 0.816 / 0.837 / 0.812 / 0.830 | done |
 | Background probe (vocalisation removed) | fine-tuned AST still 0.27-0.30 (chance <= 0.16) | done; 30 dB gate pending |
 
-## Phase 1: clean CNN rerun (Colab GPU, about 30-45 min)
+## Phase 1: clean CNN rerun (Colab GPU) — DONE 19 Nov, results in docs/results/cnn_gpu/SUMMARY.md
 ```python
 # after the usual setup cell (Drive mounted, WORK defined, repo cloned to /content/ns7k-src, audio unzipped)
 %cd /content/ns7k-src
