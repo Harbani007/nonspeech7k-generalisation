@@ -35,6 +35,10 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
   (zero-padded ramp + unmarked tail samples). The fix is opt-in (`edge_hold=True`), so the PUBLISHED background-probe
   numbers and the cached training masks still carry this small edge leak: a limitation to state when citing them.
   A full CPU (layer-11) swap run would take about 5 h on this laptop (7 targets x 3 models = 174 s); not run.
+- **Edge-leak fix now switchable everywhere (28 Nov):** `background_probe.py --edge-hold` and `ast_finetune.py waves --edge-hold`
+  (default off reproduces earlier results). Rebuilding the masks with the fix changed 2,508 of 3,242 clips (914 of 1,160
+  test clips; 2,305 at the start, 1,147 at the end), only at clip edges. Corrected probe rerun: `colab/EDGE_FIX_RUN.md`
+  (20 and 30 dB); until it runs, treat the published 0.27-0.30 background-only score as carrying this leak.
 - Whisper note: transformers' WhisperEncoder refuses inputs other than 3000 mel frames (modeling_whisper.py),
   so 4 s inputs need either 30 s padding (faithful) or a validated positional-embedding cut. Not decided.
 - Phase 1 DONE (clean CNN rerun, see results table).

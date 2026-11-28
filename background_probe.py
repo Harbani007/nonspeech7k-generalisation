@@ -117,6 +117,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--fg-db", type=float, default=20.0)
     ap.add_argument("--dilate-ms", type=float, default=50.0)
+    ap.add_argument("--edge-hold", action="store_true", help="hold the mask edge value at the clip ends (fixes a ~10 ms vocalisation leak at the clip start/end; default off = the behaviour of all results up to 19 Nov 2026)")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--limit", type=int, default=0, help="debug: only the first N clips of each partition")
     ap.add_argument("--boot", type=int, default=2000)
@@ -142,7 +143,7 @@ def main():
     waves, fgfrac = {v: [] for v in VARIANTS}, []
     for f in info.filename.values:
         x = resample_poly(load_mono(idx[f])[0], 1, 2).astype(np.float32)
-        g, gr, frac = masks_for(x, a.fg_db, a.dilate_ms, rng)
+        g, gr, frac = masks_for(x, a.fg_db, a.dilate_ms, rng, edge_hold=a.edge_hold)
         fgfrac.append(frac)
         for v, w in make_variants(x, g, gr).items():
             waves[v].append(w.astype(np.float32))

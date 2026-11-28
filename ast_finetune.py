@@ -201,7 +201,7 @@ def cmd_waves(a):
     for i in range(start, len(rows)):
         x = resample_poly(load_mono(idx[sp.filename.values[rows[i]]])[0], 1, 2).astype(np.float32)
         x = np.pad(x, (0, max(0, WAVE_LEN - len(x))))[:WAVE_LEN]
-        g, _, _ = masks_for(x, a.fg_db, a.dilate_ms, rng)
+        g, _, _ = masks_for(x, a.fg_db, a.dilate_ms, rng, edge_hold=a.edge_hold)
         M["waves"][i], M["fgmask"][i] = x, g
         if i % 200 == 0 or i == len(rows) - 1:
             for m in M.values():
@@ -575,6 +575,7 @@ def main():
     wv.add_argument("--per-class-train", type=int, default=200)
     wv.add_argument("--fg-db", type=float, default=20.0)
     wv.add_argument("--dilate-ms", type=float, default=50.0)
+    wv.add_argument("--edge-hold", action="store_true", help="hold the mask edge value at the clip ends (fixes a ~10 ms vocalisation leak at the clip start/end; default off = the behaviour of all results up to 19 Nov 2026)")
     wv.add_argument("--out", required=True)
     t = sub.add_parser("train")
     t.add_argument("--data", required=True)
