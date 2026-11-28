@@ -1,0 +1,2 @@
+git checkout d96267cd89af9231d3bc0ebc574f985404755c73
+python swap_probe.py --data /workspace/splits --clips /workspace/work/fbank_pc200/clips.csv --audio-root /workspace/data/audio --runs /workspace/work/runs_k0_pc200 --expect-freeze-k 0 --out /workspace/work/swap_probe_k0 --device cuda --batch 64

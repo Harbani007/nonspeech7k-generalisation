@@ -5,6 +5,9 @@ about what the models rely on. All models: same source-disjoint split (`docs/res
 set (1,160 clips / 300 recordings), 3 seeds, recording-level bootstrap CIs, model selection on validation only.
 
 ## Phase 0 (FIRST, approved 19 Nov): test-time background swap, go/no-go
+**DONE 28 Nov (college A100): DETECTED BUT SMALL** (delta +0.051 at 20 dB, +0.031 at 30 dB; GO needed >= 0.05 in both).
+Decision: Phase 2 (background-swap training) SKIPPED; Phase 3 (Whisper/WavLM) goes ahead as a model comparison, with the
+swap test as a secondary measure. Results: docs/results/swap_probe_a100/SUMMARY.md.
 `docs/PREREGISTRATION_SWAP_PROBE.md`, `swap_probe.py`, `colab/SWAP_PROBE_RUN.md` (about 1 Colab session, no training).
 GO (delta >= 0.05, CI > 0, at 20 and 30 dB) -> Phase 3 (speech models, compared on the same swap test) and
 swap-based training become worth the GPU time. NEGLIGIBLE / INCONCLUSIVE -> reassess with the user before more training.
@@ -30,7 +33,7 @@ After the run: update `professor_demo/RESEARCH_STUDY_GUIDE.md` (beginner explana
 Done when: 3 seeds x {standard, source-balanced} finished; report the table with CIs and the source-balanced effect for the CNN.
 (Verified on the laptop: `dl_data.py --splits` reproduces the original `logmel.npy` exactly; `train_cnn.py --device cuda` added.)
 
-## Phase 2: background-swap experiment (Colab, about 2 h): `colab/BGSWAP_RUN.md`
+## Phase 2: background-swap experiment — SKIPPED (Phase 0 verdict DETECTED BUT SMALL). Code kept: `colab/BGSWAP_RUN.md`
 Gate first (30 dB probe). Pre-registered in `docs/PREREGISTRATION_BGSWAP.md`.
 
 ## Phase 3: advanced models to "one-up" AST (new code, about 3-4 h coding + 2-3 h Colab)

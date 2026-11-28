@@ -26,10 +26,11 @@ on Nonspeech7k recordings never seen in training? Motivation: website shift exis
 | Background probe (20 dB cut, 645 clips): fine-tuned AST full 0.79, vocalisation-only 0.73, background-only 0.27-0.30 (chance <= 0.16), random-cut control 0.66; probe trained on background 0.39 | `docs/results/background_probe/SUMMARY.md` |
 | **Clean CNN rerun (GPU, 3 seeds): standard 0.762 [0.704, 0.812], source-balanced 0.792 [0.741, 0.834]; balanced - standard +0.030 [+0.005, +0.057] (significant)**. Source-balanced sampling now helps in two architectures (CNN +0.030, AST laptop +0.035; AST full FT +0.019 n.s.) | `docs/results/cnn_gpu/SUMMARY.md` |
 | **A100 rerun (28 Nov): edge fix changes nothing at 20 dB (0.304 -> 0.305); at 30 dB background-only falls to 0.16-0.20 (about 1.5x chance; 348 clips / 123 recordings); a probe trained on >30 dB-below-peak audio still 0.271 [0.213, 0.319] vs chance 0.158. AST full-FT reproduces Colab (0.816 / 0.837 / 0.812 / 0.835; balanced +0.022 [+0.002, +0.041])** | `docs/results/a100_rerun/SUMMARY.md` |
+| **Phase 0 test-time background swap (A100, 28 Nov): DETECTED BUT SMALL.** Primary AST: delta +0.051 [0.030, 0.077] (20 dB), +0.031 [0.011, 0.052] (30 dB); 13.9% of predictions change with a different-class background; no training variant reduces it. Phase 2 (background-swap training) skipped by the pre-registered rule | `docs/results/swap_probe_a100/SUMMARY.md` |
 | Contrastive loss verified active (pairs, losses, gradients logged; real-data smoke test) | `docs/results/audit/smoke_contrastive_real.txt` |
 
 ## In progress / ready to run
-- **Phase 0 (now): background-swap probe on Colab** (`run_gpu_swap.sh`, `colab/SWAP_PROBE_RUN.md`). Built and
+- **Phase 0: DONE 28 Nov on the A100 (DETECTED BUT SMALL; see results table).** Old note: (`run_gpu_swap.sh`, `colab/SWAP_PROBE_RUN.md`). Built and
   smoke-tested on the laptop CPU checkpoints (all 12 load; 'orig' reproduces stored test predictions 1.0); GPU run
   not done; needs a push of this branch (the user pushes). Pre-registration amendment 1 (commit cdee4ce): edge-held
   masks. The smoke check found that `masks_for` leaked ~10 ms of vocalisation at clip edges at about half amplitude

@@ -759,11 +759,36 @@ What it means:
    out costs about 0.5 macro-F1, and cutting the same amount elsewhere costs only about 0.13.
 2. **But what remains after cutting it out still identifies the class about 2x above chance**, on unseen recordings
    (0.30 vs <= 0.16), and a classifier trained only on that leftover audio reaches 0.39.
-3. Caution: "background" here means audio at least 20 dB quieter than the vocalisation peak. It can still contain faint
-   vocalisation (breath tails, onsets). With a looser 10 dB cut the leftover scores 0.44-0.49, so stricter removal lowers
-   it; a 30 dB run would show whether it keeps falling toward chance (true vocalisation residue) or plateaus (context).
+3. **Checked on 28 Nov (college A100, corrected masks).** The old masks leaked ~10 ms of vocalisation at clip edges;
+   fixing it changed the 20 dB numbers by at most 0.002. With a **stricter 30 dB cut** the leftover score falls to
+   0.16-0.20 (about **1.5x chance**; 348 clips). So much of the 20 dB "background" was quiet vocalisation, but a
+   classifier trained only on audio more than 30 dB below the peak still scores 0.271 vs chance 0.158: a small amount
+   of class information really is in the recording context. Files: `../docs/results/a100_rerun/`.
 4. Source-balanced models score slightly lower on background-only audio (0.27 vs 0.30). That fits less use of context,
    but it's not tested statistically; treat it as a lead, not a finding.
+
+### E. Does the background pull the prediction? (test-time background swap) ✅ VERIFIED (A100, 3 seeds; `../docs/results/swap_probe_a100/`)
+**Idea in plain words.** Keep the vocalisation exactly as it is, but replace everything around it with the
+background of *another* recording. If the background is from a recording of the **same** class, nothing should change
+(that's the control). If it is from a **different** class and the model listens to the background, recall should drop.
+No training: the 12 fine-tuned AST models are only tested. 643 unseen test clips.
+
+| AST, all layers fine-tuned (3 seeds) | recall drop with a different-class background (20 dB masks) | same, stricter 30 dB masks |
+|---|---|---|
+| ordinary (primary) | **0.051** [0.030, 0.077] | **0.031** [0.011, 0.052] |
+| source-balanced | 0.063 | 0.031 |
+| contrastive | 0.063 | 0.033 |
+| combined | 0.046 | 0.022 |
+
+- About **1 prediction in 7 changes** when the background comes from another class; 5.5% switch to the background's
+  class (3.9% would be expected without any pull).
+- Splicing itself does not hurt (same-class background: no significant drop), so it's the background's *content*.
+- **Pre-registered verdict: DETECTED BUT SMALL** (a "GO" needed at least 0.05 in both the 20 and 30 dB arms).
+- No training recipe (source-balanced, contrastive) reduces the pull.
+- Consequence: background-swap *training* is not justified and was skipped; Whisper/WavLM go ahead as a model comparison.
+
+**One sentence for the professor:** "The models mainly listen to the vocalisation; the background has a real but small
+pull (3-6 recall points), and none of our training tricks removes it."
 
 ---
 
@@ -787,6 +812,8 @@ What it means:
 7. Fine-tuned AST embeddings still cluster by recording: a test clip's nearest same-class neighbour is from its own
    recording 70-72% of the time vs 7.6% chance, and the contrastive loss did not change this. That explains *why* it did not
    help, and it is itself a finding about how strongly recording identity is encoded.
+8. Models mainly listen to the vocalisation: with it cut out they fall to ~2x chance (20 dB cut) and ~1.5x chance (30 dB
+   cut); swapping in a different-class background lowers recall by 3-6 points (pre-registered verdict: detected but small).
 
 ## 2. Evidence files
 | Claim | File |
@@ -842,6 +869,7 @@ weights changing) and the logged AST gradient evidence.
 
 | When | What changed | Why | New evidence | Study next |
 |---|---|---|---|---|
+| 2026-11-28 | Corrected background probe (20/30 dB) and test-time background swap added (Ch. 13.5 D/E, professor section) | A100 runs | `docs/results/a100_rerun/`, `docs/results/swap_probe_a100/` | Ch. 13.5 E |
 | 2026-11-18 23:30 | Replaced START HERE; added Ch. 13 and the professor section; banners on stale chapters | AST fine-tuning + contrastive loss implemented; website numbers corrected | `website_holdout_recordings.csv`, `smoke_contrastive_real.txt`, tests (23 pass) | Ch. 13 |
 | 2026-11-18 21:08 | Exp 6 progress check | Keep guide current | `train.log` now at epoch 9: val macro-F1 0.644 at epoch 7 (best so far), val loss swings 1.10→2.80→1.19 (noisy); still no test result | Why val loss is noisy with 1,024-draw epochs |
 | 2026-11-18 21:05 | Created guide from repo audit | Professor meeting tomorrow | Read results/*.txt, v3 CSVs, `train_cnn.py`, `dl_data.py`, `sources.py`; `train.log` at epoch 4 (val macro-F1 0.464); `best.pt` updated 21:00 | Ch. 3, 5; Exp 4 numbers; the "honesty box" at the top |

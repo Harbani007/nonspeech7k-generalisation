@@ -165,6 +165,13 @@ ITEMS = [  # (filename, source key or path, title, show, say)
      "Raw output figure of the corrected probe, 20 dB cut (college A100)", "All models and the linear probes, with CIs.", ""),
     ("16_Background_probe_A100_30dB.png", "NB:docs/results/a100_rerun/probe_db30_edgefix/G10_background_probe.png",
      "Raw output figure of the corrected probe, stricter 30 dB cut (college A100)", "Removed-vocalisation bars drop to about 1.5x chance.", ""),
+    ("16_Background_swap_chart.png", "NB:docs/results/swap_probe_a100/G11_swap_probe.png",
+     "Background swap: does a background from another class pull the prediction?",
+     "Same-class background (control) vs different-class background, 20 dB / 30 dB / raw.",
+     "Different-class backgrounds lower recall by 3-6 points; verdict fixed in advance: detected but small."),
+    ("16_Background_swap_effects.csv", "NB:docs/results/swap_probe_a100/swap_effects.csv",
+     "Numbers behind the swap chart (all effects with CIs)", "Row 'swap effect: same - different' is the main number.", ""),
+    ("16_Background_swap_SUMMARY.md", "NB:docs/results/swap_probe_a100/SUMMARY.md", "Plain-language summary of the swap test", "", ""),
     ("17_Live_demo_waveform_spectrogram.png", "SCR:demo_cell7_0.png", "Live demo: an unseen test recording (a scream)", "", ""),
     ("17_Live_demo_predictions.png", "SCR:demo_cell11_1.png", "Live demo: model predictions",
      "CNN said crying; both fine-tuned AST models said screaming (raw softmax scores).", ""),
@@ -180,9 +187,8 @@ ITEMS = [  # (filename, source key or path, title, show, say)
 def write_next(path):
     open(path, "w", encoding="utf-8").write(
         "# Next steps (tentative, after today's presentation)\n\n"
-        "1. **Background-swap training** (code written and pre-registered: docs/PREREGISTRATION_BGSWAP.md).\n"
-        "   Paste each vocalisation onto another recording's background during training; test whether the model stops using\n"
-        "   the background (background-only score drops) without losing accuracy on unseen recordings. A 30 dB probe runs first.\n"
+        "1. **Done since:** the background-swap test found only a small pull (verdict fixed in advance: detected but small),\n"
+        "   so background-swap training is not needed.\n"
         "2. **Speech-pretrained vs general-audio models**: fine-tune the Whisper-small encoder and WavLM Base+ with the same\n"
         "   split, budget, seeds and background probe as AST. Question: which pretraining makes a model listen to the\n"
         "   vocalisation rather than the recording around it?\n"

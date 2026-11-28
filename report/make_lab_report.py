@@ -435,6 +435,39 @@ def main():
             "class information is carried by the recording context. Caveat: fewer clips have enough quiet audio for the 30 dB "
             f"test ({PN[30]['clips']} clips, {PN[30]['recordings']} recordings, few breath and screaming clips).")]
 
+    # ---------------- 7.6 test-time background swap ----------------
+    SW = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "results", "swap_probe_a100")
+    se = pd.read_csv(os.path.join(SW, "swap_effects.csv"))
+    names = {"ast_ft_source_disjoint_standard": "AST ordinary (primary)", "ast_ft_source_disjoint_source": "AST source-balanced",
+             "ast_ftsc_source_disjoint_standard": "AST contrastive", "ast_ftsc_source_disjoint_source": "AST combined"}
+
+    def cell(sys_, eff, arm):
+        x = se[(se.system == sys_) & (se.effect == eff) & (se.arm == arm)].iloc[0]
+        return f"{x.estimate:+.3f} [{x.ci_lo:+.3f}, {x.ci_hi:+.3f}]"
+    rows = [["Model (3 seeds)", "Recall drop, 20 dB masks", "Recall drop, 30 dB masks", "Splice damage (control)"]]
+    for k, v in names.items():
+        rows.append([v, cell(k, "swap effect: same - different", "m20"), cell(k, "swap effect: same - different", "m30"),
+                     cell(k, "manipulation: orig - same", "m20")])
+    pr = se[se.system == "ast_ft_source_disjoint_standard"].set_index(["effect", "arm"])
+    flip, todon = pr.loc[("flip rate", "m20"), "estimate"], pr.loc[("flip-to-donor rate", "m20"), "estimate"]
+    s += [P("7.6 Does the background pull the prediction? (background swap)", H2),
+          P("The probe above removes the vocalisation. A complementary, pre-registered test keeps each test vocalisation "
+            "unchanged and replaces only its background: once with the background of another recording of the same class "
+            "(control) and once with backgrounds from recordings of other classes (level-matched; 643 test clips, the 12 fully "
+            "fine-tuned AST models, no retraining). If a model relies on the background, recall drops when the background "
+            "belongs to another class. All 12 models first reproduced their stored test predictions (agreement 0.999-1.000)."),
+          table(rows, "Background swap: recall drop when the background comes from a different-class recording "
+                      "(same-class background minus different-class background; 95% recording-level CI).",
+                widths=[1.9 * inch, 1.55 * inch, 1.55 * inch, 1.5 * inch]),
+          figure(os.path.join(SW, "G11_swap_probe.png"), "Background swap: macro-recall of the vocalisation's class for the "
+                 "original clip (orig), the vocalisation alone (fg), and same- vs different-class backgrounds at 20 dB, 30 dB "
+                 "and without level matching (raw).", max_h=2.7 * inch),
+          P(f"A different-class background lowers recall by about 3-6 points, and {100 * flip:.0f}% of predictions change "
+            f"({100 * todon:.1f}% switch to the background's class, against about 4% expected without any pull), while the "
+            "same-class control shows that splicing itself does not measurably hurt. The pre-registered verdict is "
+            "<b>detected but small</b>: a large effect (at least 0.05 in both the 20 and 30 dB arms) was required to justify "
+            "background-swap training, and the 30 dB arm gave only 0.031. None of the training variants reduces the pull.")]
+
     # ---------------- 9. conclusion ----------------
     s += [P("8. Conclusion", H1),
           P("All objectives were achieved. We reconstructed recording identities, detected 137 duplicated audio pairs and built a "
@@ -445,8 +478,8 @@ def main():
             "AST (+0.035), while the cross-source contrastive loss does not, and "
             "learned representations stay strongly organised by recording; (3) errors cluster by recording, so clip-level "
             "reporting overstates certainty about two-fold; (4) models mainly use the vocalisation: with it removed they fall to "
-            "about twice chance, and to about 1.5 times chance with a stricter cut, so only a small part of the class information "
-            "comes from the recording context. Together these give a more reliable picture of how well vocalisation classifiers "
+            "about twice chance, and to about 1.5 times chance with a stricter cut, and a background from another class lowers "
+            "recall by only 3-6 points, so only a small part of the class information comes from the recording context. Together these give a more reliable picture of how well vocalisation classifiers "
             "generalise than a single accuracy number on a random split.")]
 
     # ---------------- 10. future scope ----------------
@@ -454,8 +487,8 @@ def main():
     s += bullets([
         "Per-class analysis of the audio left after removing the vocalisation, to see which classes carry information in "
         "their recording context.",
-        "Background-swap training (already implemented and pre-registered): paste each vocalisation onto the background of "
-        "another recording during training and test whether reliance on the background disappears without losing accuracy.",
+        "Background-swap training (implemented and pre-registered; not run because the swap test found only a small effect): "
+        "could still be tried as a robustness method on larger or noisier data.",
         "Compare speech-pretrained models (Whisper encoder, WavLM) with the general-audio AST under the same protocol and "
         "background probe, to see which pretraining makes a model listen to the vocalisation itself. Models likely trained on "
         "Nonspeech7k (voc2vec, CLAP) are excluded to avoid test leakage.",

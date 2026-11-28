@@ -127,6 +127,17 @@ def build_tables(R, T):
     ch = max(ft20[ft20.variant == "background"].chance_95.max(), ft30[ft30.variant == "background"].chance_95.max())
     rows_bg.append(["chance level (95th percentile)", f"<= {ch:.2f}", f"<= {ch:.2f}"])
     d = pd.DataFrame(rows_bg, columns=["audio given to the model", "AST ordinary", "AST combined"])
+    SW = os.path.join(REPO, "docs", "results", "swap_probe_a100")
+    se = pd.read_csv(os.path.join(SW, "swap_effects.csv"))
+    nm = {"ast_ft_source_disjoint_standard": "AST ordinary (primary)", "ast_ft_source_disjoint_source": "AST source-balanced",
+          "ast_ftsc_source_disjoint_standard": "AST contrastive", "ast_ftsc_source_disjoint_source": "AST combined"}
+
+    def sc(sys_, arm):
+        x = se[(se.system == sys_) & (se.effect == "swap effect: same - different") & (se.arm == arm)].iloc[0]
+        return f"{x.estimate:+.3f} [{x.ci_lo:+.3f}, {x.ci_hi:+.3f}]"
+    dsw = pd.DataFrame([[v, sc(k, "m20"), sc(k, "m30")] for k, v in nm.items()],
+                       columns=["model (3 seeds)", "recall drop, 20 dB masks", "recall drop, 30 dB masks"])
+    tabs["swap"] = table_png(dsw, os.path.join(T, "t_swap.png"), [2.4, 2.2, 2.2], highlight_rows=[0])
     tabs["bg"] = table_png(d, os.path.join(T, "t_bg.png"), [3.6, 1.2, 1.2], highlight_rows=[3, 4])
     return tabs
 
@@ -190,13 +201,23 @@ def slides(R, T, tabs):
                    "stricter 30 dB cut about 1.5 times chance, so much of the 20 dB signal was quiet vocalisation. A classifier "
                    "trained only on the leftover audio is still above chance. Corrected masks (an edge leak was fixed; it changed "
                    "the 20 dB numbers by at most 0.002). Source: docs/results/a100_rerun."),
+        dict(title="Does the background pull the prediction? (background swap)",
+             imgs=[os.path.join(REPO, "docs", "results", "swap_probe_a100", "G11_swap_probe.png"), tabs["swap"]],
+             bullets=["Vocalisation kept, background replaced: same-class background (control) vs different-class background",
+                      "Different-class background lowers recall by 3-6 points; about 1 prediction in 7 changes",
+                      "Pre-registered verdict: detected but small; no training recipe removes it"],
+             notes="We keep each test vocalisation unchanged and paste it onto another recording's background. With a "
+                   "different-class background recall drops by about 0.05 (20 dB masks) or 0.03 (30 dB masks); the same-class "
+                   "control shows the splicing itself does no harm. The rule fixed in advance needed 0.05 in both arms to call it "
+                   "large, so the verdict is 'detected but small', and background-swap training was not run. Source: "
+                   "docs/results/swap_probe_a100."),
         dict(title="Live demo: an unseen scream", imgs=[os.path.join(scr, "demo_cell7_0.png"), os.path.join(scr, "demo_cell11_1.png")],
              bullets=["CNN said crying; both fine-tuned AST models said screaming (raw softmax scores, not calibrated)"],
              notes="Optional: open professor_demo/LIVE_DL_DEMO_executed.ipynb."),
         dict(title="Work in progress: next experiments (GPU)",
              bullets=["Today's results are interim: ML baselines, a CNN from scratch and the AST transformer",
-                      "Next 1: background-swap training: does the model stop using the background? (code ready)",
-                      "Next 2: speech-pretrained Whisper and WavLM vs AST, with the same background probe",
+                      "Done since: background swap test (small pull; background-swap training not needed)",
+                      "Next: speech-pretrained Whisper and WavLM vs AST, with the same background tests (running)",
                       "Excluded: voc2vec and CLAP (likely trained on Nonspeech7k)",
                       "Report and slides will be updated with these results"],
              notes="Say that today's results are interim and what the next GPU experiments will test. Code for the background-swap "

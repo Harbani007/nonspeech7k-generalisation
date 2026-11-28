@@ -1,0 +1,21 @@
+{
+ "primary_system": "ast_ft_source_disjoint_standard",
+ "is_preregistered_primary": true,
+ "freeze_k": [
+  0
+ ],
+ "decision": "DETECTED BUT SMALL",
+ "delta_m20": [
+  0.05086169706306998,
+  0.02995055953236759,
+  0.07701333702093305
+ ],
+ "delta_m30": [
+  0.030981376805175542,
+  0.011376699171127184,
+  0.05187190758315378
+ ],
+ "targets": 643,
+ "limit": 0,
+ "note": "full run"
+}

@@ -1,0 +1,59 @@
+{
+ "args": {
+  "data": "/workspace/splits",
+  "clips": "/workspace/work/fbank_pc200/clips.csv",
+  "audio_root": "/workspace/data/audio",
+  "runs": "/workspace/work/runs_k0_pc200",
+  "run_globs": [
+   "ast_ft_source_disjoint_standard_s*",
+   "ast_ft_source_disjoint_source_s*",
+   "ast_ftsc_source_disjoint_standard_s*",
+   "ast_ftsc_source_disjoint_source_s*"
+  ],
+  "expect_freeze_k": 0,
+  "primary": "ast_ft_source_disjoint_standard",
+  "out": "/workspace/work/swap_probe_k0",
+  "dilate_ms": 50.0,
+  "device": "cuda",
+  "batch": 64,
+  "boot": 2000,
+  "seed": 0,
+  "limit": 0,
+  "check_only": false,
+  "check_n": 64,
+  "examples": 1,
+  "overwrite": false
+ },
+ "git_commit": "d96267cd89af9231d3bc0ebc574f985404755c73",
+ "arms": [
+  [
+   "m20",
+   20,
+   true
+  ],
+  [
+   "m30",
+   30,
+   true
+  ],
+  [
+   "raw20",
+   20,
+   false
+  ]
+ ],
+ "scale_limits": [
+  0.01,
+  100.0
+ ],
+ "min_bg_dbfs": -70.0,
+ "match_features": [
+  "bg_fraction",
+  "bg_log_rms",
+  "bg_centroid",
+  "duration"
+ ],
+ "preregistration": "docs/PREREGISTRATION_SWAP_PROBE.md",
+ "device": "cuda",
+ "torch": "2.14.0a0+b2c75dd062.nv26.09"
+}
