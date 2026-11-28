@@ -1,0 +1,12 @@
+file,cls,model,fg_fraction
+422970_0_0.wav,breath,ast_ft_source_disjoint_standard_s0,0.23782398177157504
+66629-7_0_0.wav,breath,ast_ft_source_disjoint_standard_s0,0.6102865916069601
+219-cough-aigei-1_1_0.wav,cough,ast_ft_source_disjoint_standard_s0,0.6268656716417911
+199-cough-aigei-10_1_0.wav,cough,ast_ft_source_disjoint_standard_s0,0.73625
+482=168679-1_2_0.wav,crying,ast_ft_source_disjoint_standard_s0,0.5
+682=165597-3_2_0.wav,crying,ast_ft_source_disjoint_standard_s0,0.28125
+36164-1_3_0.wav,laugh,ast_ft_source_disjoint_standard_s0,0.3248730964467005
+207327-5_3_0.wav,laugh,ast_ft_source_disjoint_standard_s0,0.5425531914893617
+132-sneeze-aigei-4_5_0.wav,sneeze,ast_ft_source_disjoint_standard_s0,0.3836317135549872
+360682-5_6_0.wav,yawn,ast_ft_source_disjoint_standard_s0,0.7238144867118291
+403974-1_6_0.wav,yawn,ast_ft_source_disjoint_standard_s0,0.6336805555555556

@@ -1,0 +1,7 @@
+comparison,evaluation,a,b,macro_f1_a,macro_f1_b,diff,ci_lo,ci_hi,seeds_a,seeds_b,ci_excludes_zero
+balanced - ordinary,source-disjoint test,AST-FT ordinary,AST-FT source-balanced,0.8155415393209057,0.8368256975551728,0.021284158234267103,-0.002276376472740021,0.042465418407722284,3,3,False
+contrastive - ordinary,source-disjoint test,AST-FT ordinary,AST-FT cross-source contrastive,0.8155415393209057,0.8118252055000824,-0.003716333820823259,-0.014108633020902334,0.004858003039623875,3,3,False
+combined - ordinary,source-disjoint test,AST-FT ordinary,AST-FT combined,0.8155415393209057,0.8351094389797898,0.01956789965888417,-0.0025947616675175865,0.04012668224657175,3,3,False
+combined - balanced,source-disjoint test,AST-FT source-balanced,AST-FT combined,0.8368256975551728,0.8351094389797898,-0.001716258575382934,-0.013759031536606434,0.01197601239699067,3,3,False
+combined - contrastive,source-disjoint test,AST-FT cross-source contrastive,AST-FT combined,0.8118252055000824,0.8351094389797898,0.023284233479707428,0.002719103286062852,0.04405939483151253,3,3,True
+"fine-tuned - frozen (AST, same 4 s input)",source-disjoint test,AST frozen + linear head,AST-FT ordinary,0.7781131628825787,0.8155415393209057,0.03742837643832697,0.0075303020283507575,0.06542375514533266,3,3,True
