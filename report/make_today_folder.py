@@ -101,12 +101,10 @@ def tables(R):
                                           "share of errors in worst 10% of recordings": ec.top10pct_recordings_share_of_errors.round(2),
                                           "CI width if clips treated as independent": ec.ci_width_clip_bootstrap.round(3),
                                           "CI width resampling recordings": ec.ci_width_source_bootstrap.round(3)})
-    T["background_probe"] = pd.DataFrame([
-        ["ordinary", 0.788, 0.732, 0.671, 0.304, "0.257-0.341"], ["source-balanced", 0.797, 0.741, 0.662, 0.265, "0.224-0.301"],
-        ["contrastive", 0.785, 0.729, 0.657, 0.304, "0.260-0.340"], ["combined", 0.784, 0.744, 0.655, 0.277, "0.231-0.319"],
-        ["linear probe trained on background only", "-", "-", "-", 0.387, "0.327-0.437"]],
-        columns=["AST fully fine-tuned (GPU, 3 seeds)", "full clip", "vocalisation only", "random cut (control)",
-                 "vocalisation REMOVED", "95% CI (removed)"])
+    import sys as _sys
+    _sys.path.insert(0, HERE)
+    from probe_numbers import table as probe_table
+    T["background_probe"] = probe_table()
     return T
 
 
@@ -160,10 +158,13 @@ ITEMS = [  # (filename, source key or path, title, show, say)
      "Worst 10% of recordings hold about 80% of errors; per-clip CIs about 2x too narrow.",
      "Results on this dataset should be reported per recording, not per clip."),
     ("16_Background_probe_chart.png", "BUILD:background_probe.png", "What does the model listen to? (most surprising result)",
-     "Full 0.79 | vocalisation only 0.73 | random cut 0.66 | vocalisation REMOVED 0.27-0.30 (chance <= 0.16).",
-     "Models mainly listen to the sound, but leftover audio still reveals the class at twice chance."),
+     "Full 0.79 | vocalisation only 0.73 | random cut 0.66 | vocalisation REMOVED 0.26-0.31 at a 20 dB cut, 0.16-0.20 at a stricter 30 dB cut (chance <= 0.14).",
+     "Models mainly listen to the sound; with it removed they fall to about 2x chance (20 dB) and 1.5x chance (30 dB), so a small part of the information is recording context. Corrected masks, A100 rerun."),
     ("16_Background_probe_table.csv", "background_probe", "Numbers behind the chart", "", ""),
-    ("16_Background_probe_Colab_output.png", "SCR:colab_probe_cell3_0.png", "Original Colab output of the probe (proof it ran on GPU)", "", ""),
+    ("16_Background_probe_A100_20dB.png", "NB:docs/results/a100_rerun/probe_db20_edgefix/G10_background_probe.png",
+     "Raw output figure of the corrected probe, 20 dB cut (college A100)", "All models and the linear probes, with CIs.", ""),
+    ("16_Background_probe_A100_30dB.png", "NB:docs/results/a100_rerun/probe_db30_edgefix/G10_background_probe.png",
+     "Raw output figure of the corrected probe, stricter 30 dB cut (college A100)", "Removed-vocalisation bars drop to about 1.5x chance.", ""),
     ("17_Live_demo_waveform_spectrogram.png", "SCR:demo_cell7_0.png", "Live demo: an unseen test recording (a scream)", "", ""),
     ("17_Live_demo_predictions.png", "SCR:demo_cell11_1.png", "Live demo: model predictions",
      "CNN said crying; both fine-tuned AST models said screaming (raw softmax scores).", ""),
@@ -209,8 +210,8 @@ def guide_pdf(path, rows, today):
                    "every value is read from the project's result files.", B),
          Paragraph("<b>One-sentence summary.</b> On Nonspeech7k, models partly recognise the <i>recording</i> rather than the "
                    "<i>sound</i>; with leakage-safe evaluation, sampling recordings evenly helps (CNN and AST), a contrastive loss "
-                   "does not, errors cluster by recording, and models still recognise the class at twice chance with the "
-                   "vocalisation cut out.", B),
+                   "does not, errors cluster by recording, and with the vocalisation cut out models still score about 1.5-2 times "
+                   "chance, so a small part of the information is recording context.", B),
          Paragraph("Order of the talk (about 12 minutes)", H2)]
     data = [[Paragraph(x, CB) for x in ("File", "What it is / what to show", "What to say")]]
     for fn, _, title, show, say in rows:

@@ -100,20 +100,28 @@ def page_number(canvas, doc):
 
 
 def background_figure(out):
-    """Bar chart of the Colab background-probe numbers (transcribed in docs/results/background_probe/SUMMARY.md)."""
-    systems = ["ordinary", "source-balanced", "contrastive", "combined"]
-    vals = {"full clip": [0.788, 0.797, 0.785, 0.784], "vocalisation only": [0.732, 0.741, 0.729, 0.744],
-            "random cut (control)": [0.671, 0.662, 0.657, 0.655], "vocalisation removed": [0.304, 0.265, 0.304, 0.277]}
-    fig, ax = plt.subplots(figsize=(7.5, 3.4))
-    w = 0.2
-    for j, (k, v) in enumerate(vals.items()):
-        ax.bar([i + (j - 1.5) * w for i in range(4)], v, w, label=k)
-    ax.axhline(0.16, color="k", ls="--", lw=1, label="chance (95th percentile)")
-    ax.set_xticks(range(4), systems)
-    ax.set_ylabel("macro-F1")
+    """Background probe from the A100 result files (edge-fixed masks; docs/results/a100_rerun via report/probe_numbers.py):
+    full / vocalisation only / random cut / vocalisation removed at a 20 dB cut, plus vocalisation removed at a 30 dB cut."""
+    from probe_numbers import CONDITIONS, load
+    order = list(CONDITIONS.values())
+    ft20, _ = load(20)
+    ft30, _ = load(30)
+    series = [("full clip", ft20, "full"), ("vocalisation only", ft20, "foreground"), ("random cut (control)", ft20, "random"),
+              ("vocalisation removed (20 dB cut)", ft20, "background"), ("vocalisation removed (30 dB cut)", ft30, "background")]
+    fig, ax = plt.subplots(figsize=(8.2, 3.6))
+    w = 0.16
+    for j, (lab, df, var) in enumerate(series):
+        d = df[df.variant == var].set_index("condition").reindex(order)
+        x = [k + (j - 2) * w for k in range(4)]
+        ax.bar(x, d.macro_f1, w, label=lab)
+        ax.errorbar(x, d.macro_f1, yerr=[d.macro_f1 - d.ci_lo, d.ci_hi - d.macro_f1], fmt="none", color="k", lw=0.8, capsize=2)
+    ch = max(ft20[ft20.variant == "background"].chance_95.max(), ft30[ft30.variant == "background"].chance_95.max())
+    ax.axhline(ch, color="k", ls="--", lw=1, label=f"chance (95th percentile, <= {ch:.2f})")
+    ax.set_xticks(range(4), order)
+    ax.set_ylabel("macro-F1 (95% CI)")
     ax.set_ylim(0, 1)
-    ax.legend(fontsize=7.5, ncol=3, loc="upper center")
-    ax.set_title("Background probe, unseen recordings (645 clips, 20 dB cut, 3 seeds)", fontsize=10)
+    ax.legend(fontsize=7, ncol=3, loc="upper center")
+    ax.set_title("Background probe, unseen recordings (AST fully fine-tuned, 3 seeds, A100)", fontsize=10)
     fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -142,6 +150,8 @@ def main():
     eff_gpu = pd.read_csv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                        "docs", "results", "colab_k0_pc200", "ast_2x2_effects.csv")).set_index("quantity")
     ec = pd.read_csv(os.path.join(R, "error_clustering.csv"))
+    from probe_numbers import summary as probe_summary
+    PN = probe_summary()
     ecm = pd.read_csv(os.path.join(R, "error_clustering_ml.csv"))
 
     s = []
@@ -170,7 +180,8 @@ def main():
         "Holding out a whole website costs about 0.06 macro-F1. Source-balanced sampling helps modestly in two architectures "
         "(CNN +0.030, AST +0.035, both significant), the contrastive loss does not. Test errors cluster strongly by recording, so clip-level confidence "
         "intervals are about two times too narrow. Removing the vocalisation from a clip drops performance to about twice chance, "
-        "showing that the models mainly, but not only, listen to the vocalisation itself."), PageBreak()]
+        "and to about 1.5 times chance with a stricter cut, showing that the models mainly, but not only, listen to the "
+        "vocalisation itself."), PageBreak()]
 
     # ---------------- 2. introduction ----------------
     s += [P("1. Introduction", H1),
@@ -375,7 +386,9 @@ def main():
     s += [table(rows, "Effects on test macro-F1 with 95% recording-level bootstrap intervals (3 seeds per condition).",
                 widths=[2.0 * inch, 2.1 * inch, 2.1 * inch]),
           P("Source-balanced sampling improved macro-F1 by 3.5 points in the laptop experiment (interval excludes zero) and "
-            "pointed the same way with full fine-tuning (+1.9 points, interval just touching zero). The same effect was found for the CNN trained from scratch (clean rerun, 3 seeds): source-balanced sampling raised macro-F1 from 0.762 [0.704, 0.812] to 0.792 [0.741, 0.834], a gain of +0.030 [+0.005, +0.057]. The contrastive loss had no "
+            "pointed the same way with full fine-tuning (+1.9 points, interval just touching zero). A rerun of the full fine-tuning "
+            "on a second GPU (A100) reproduced the four conditions (0.816, 0.837, 0.812, 0.835) and gave a source-balanced gain of "
+            "+0.022 [+0.002, +0.041], so this effect sits at the edge of significance with full fine-tuning. The same effect was found for the CNN trained from scratch (clean rerun, 3 seeds): source-balanced sampling raised macro-F1 from 0.762 [0.704, 0.812] to 0.792 [0.741, 0.834], a gain of +0.030 [+0.005, +0.057]. The contrastive loss had no "
             "detectable effect in either experiment, although it was verifiably active during training. A diagnostic explains "
             "why: for every model, the nearest same-class neighbour of a test clip comes from the <i>same recording</i> 70-72% of "
             "the time, against 7.6% by chance, and the contrastive loss does not change this (Figure 6).")]
@@ -401,16 +414,26 @@ def main():
             f"{best.ci_width_source_bootstrap:.3f} wide). Results on this dataset should therefore be reported with "
             f"recording-level uncertainty."),
           P("7.5 What do the models listen to? (background probe)", H2),
-          P("Each test clip was modified in three ways: the vocalisation removed (all audio within 20 dB of the loudest moment), "
-            "only the vocalisation kept, and, as a control, the same amount of audio removed at a random position. The fine-tuned "
-            "models were then re-evaluated without retraining (645 eligible clips, 186 recordings, GPU models, 3 seeds)."),
+          P("Each test clip was modified in three ways: the vocalisation removed (all audio within 20 dB of the loudest moment, "
+            "widened by 50 ms), only the vocalisation kept, and, as a control, the same amount of audio removed at a random "
+            "position. The fully fine-tuned AST models (3 seeds per condition) were re-evaluated without retraining "
+            f"({PN[20]['clips']} eligible test clips, {PN[20]['recordings']} recordings). The test was repeated with a stricter "
+            "30 dB cut, which removes quieter parts of the vocalisation too. An earlier version of the masks leaked about 10 ms of "
+            "vocalisation at the clip edges; the results below use corrected masks (the correction changed the 20 dB scores by at "
+            "most 0.002)."),
           figure(os.path.join(B, "background_probe.png"), "Background probe: macro-F1 of the four fully fine-tuned AST "
-                 "conditions on full, vocalisation-only, randomly cut and vocalisation-removed audio.", max_h=2.9 * inch),
-          P("The vocalisation alone keeps about 93% of the performance, and removing it costs about 0.5 macro-F1, far more than "
-            "removing the same amount elsewhere (about 0.13). The models therefore mainly listen to the vocalisation. "
-            "Surprisingly, the audio that remains after removing it still identifies the class at about twice chance "
-            "(0.27-0.30 versus at most 0.16) on unseen recordings, and a classifier trained only on that remaining audio reaches "
-            "0.39. Part of this may be faint traces of the vocalisation below the 20 dB threshold; a stricter 30 dB test is planned.")]
+                 "conditions on full, vocalisation-only, randomly cut and vocalisation-removed audio (20 and 30 dB cuts).", max_h=3.0 * inch),
+          P(f"The vocalisation alone keeps about 93% of the performance ({PN[20]['fg_min']:.2f}-{PN[20]['fg_max']:.2f} against "
+            f"{PN[20]['full_min']:.2f}-{PN[20]['full_max']:.2f}), and removing it costs about 0.5 macro-F1, far more than removing "
+            "the same amount elsewhere (about 0.13). The models therefore mainly listen to the vocalisation. With the 20 dB cut, "
+            f"the remaining audio still identifies the class at about twice chance ({PN[20]['bg_min']:.2f}-{PN[20]['bg_max']:.2f} "
+            f"against at most {PN[20]['chance_max']:.2f}). With the stricter 30 dB cut this falls to about 1.5 times chance "
+            f"({PN[30]['bg_min']:.2f}-{PN[30]['bg_max']:.2f} against at most {PN[30]['chance_max']:.2f}; all four lower CI bounds "
+            "remain above chance, two only just), so much of the 20 dB signal was quiet vocalisation 20-30 dB below the peak. "
+            f"A classifier trained only on the audio left after the 30 dB cut still reaches {PN[30]['probe']:.3f} "
+            f"[{PN[30]['probe_lo']:.3f}, {PN[30]['probe_hi']:.3f}] against chance {PN[30]['probe_chance']:.3f}: a small amount of "
+            "class information is carried by the recording context. Caveat: fewer clips have enough quiet audio for the 30 dB "
+            f"test ({PN[30]['clips']} clips, {PN[30]['recordings']} recordings, few breath and screaming clips).")]
 
     # ---------------- 9. conclusion ----------------
     s += [P("8. Conclusion", H1),
@@ -421,15 +444,16 @@ def main():
             "about 6 macro-F1 points; (2) source-balanced sampling helps a little and consistently, for both the CNN (+0.030) and "
             "AST (+0.035), while the cross-source contrastive loss does not, and "
             "learned representations stay strongly organised by recording; (3) errors cluster by recording, so clip-level "
-            "reporting overstates certainty about two-fold; (4) models mainly use the vocalisation, but the remaining audio still "
-            "carries class information. Together these give a more reliable picture of how well vocalisation classifiers "
+            "reporting overstates certainty about two-fold; (4) models mainly use the vocalisation: with it removed they fall to "
+            "about twice chance, and to about 1.5 times chance with a stricter cut, so only a small part of the class information "
+            "comes from the recording context. Together these give a more reliable picture of how well vocalisation classifiers "
             "generalise than a single accuracy number on a random split.")]
 
     # ---------------- 10. future scope ----------------
     s += [P("9. Future Scope", H1)]
     s += bullets([
-        "Repeat the background probe with a stricter 30 dB cut and per-class analysis, to separate background context from "
-        "faint vocalisation traces.",
+        "Per-class analysis of the audio left after removing the vocalisation, to see which classes carry information in "
+        "their recording context.",
         "Background-swap training (already implemented and pre-registered): paste each vocalisation onto the background of "
         "another recording during training and test whether reliance on the background disappears without losing accuracy.",
         "Compare speech-pretrained models (Whisper encoder, WavLM) with the general-audio AST under the same protocol and "
@@ -472,7 +496,7 @@ def main():
             "executed notebooks (Google Colab and the local demo notebooks); text outputs are shown as console renderings of "
             "the saved cell output."),
           figure(os.path.join(SCR, "console_colab_probe.png"), "Google Colab (T4 GPU): printed results of the background probe.", max_h=3.3 * inch),
-          figure(os.path.join(SCR, "colab_probe_cell3_0.png"), "Google Colab: background-probe figure produced by background_probe.py.", max_h=2.3 * inch),
+          figure(os.path.join(SCR, "colab_probe_cell3_0.png"), "Google Colab: background-probe figure produced by background_probe.py (earlier run, before the mask-edge correction).", max_h=2.3 * inch),
           figure(os.path.join(SCR, "console_demo.png"), "Live demo notebook: model loading and predictions on real test recordings (laptop CPU).", max_h=3.0 * inch),
           figure(os.path.join(SCR, "demo_cell7_0.png"), "Live demo: waveform and log-mel spectrogram of an unseen test recording (screaming).", max_h=2.6 * inch),
           figure(os.path.join(SCR, "demo_cell11_1.png"), "Live demo: raw softmax scores of the CNN and two fine-tuned AST models for that recording.", max_h=2.2 * inch),

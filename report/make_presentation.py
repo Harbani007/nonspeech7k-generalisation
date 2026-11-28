@@ -111,10 +111,23 @@ def build_tables(R, T):
                       "CI width: per clip vs per recording": [f"{a:.3f} vs {b:.3f}" for a, b in zip(e.ci_width_clip_bootstrap, e.ci_width_source_bootstrap)]})
     tabs["err"] = table_png(d, os.path.join(T, "t_err.png"), [1.5, 1.4, 1.4, 1.9, 2.2])
 
-    d = pd.DataFrame([["full clip", "0.788", "0.784"], ["vocalisation only", "0.732", "0.744"],
-                      ["same amount cut at random (control)", "0.671", "0.655"], ["vocalisation REMOVED", "0.304", "0.277"],
-                      ["chance level", "<= 0.16", "<= 0.16"]], columns=["audio given to the model", "AST ordinary", "AST combined"])
-    tabs["bg"] = table_png(d, os.path.join(T, "t_bg.png"), [3.4, 1.2, 1.2], highlight_rows=[3])
+    from probe_numbers import load
+    ft20, _ = load(20)
+    ft30, _ = load(30)
+
+    def val(df, cond, var):
+        x = df[(df.condition == cond) & (df.variant == var)].iloc[0]
+        return f"{x.macro_f1:.3f}"
+    rows_bg = []
+    for lab, df, var in [("full clip", ft20, "full"), ("vocalisation only", ft20, "foreground"),
+                         ("same amount cut at random (control)", ft20, "random"),
+                         ("vocalisation REMOVED (20 dB cut)", ft20, "background"),
+                         ("vocalisation REMOVED (stricter 30 dB cut)", ft30, "background")]:
+        rows_bg.append([lab, val(df, "ordinary", var), val(df, "combined", var)])
+    ch = max(ft20[ft20.variant == "background"].chance_95.max(), ft30[ft30.variant == "background"].chance_95.max())
+    rows_bg.append(["chance level (95th percentile)", f"<= {ch:.2f}", f"<= {ch:.2f}"])
+    d = pd.DataFrame(rows_bg, columns=["audio given to the model", "AST ordinary", "AST combined"])
+    tabs["bg"] = table_png(d, os.path.join(T, "t_bg.png"), [3.6, 1.2, 1.2], highlight_rows=[3, 4])
     return tabs
 
 
@@ -171,9 +184,12 @@ def slides(R, T, tabs):
              notes="Error clustering is strong for every model. Source: error_clustering.csv."),
         dict(title="What does the model listen to? (surprising result)", imgs=[os.path.join(HERE, "build", "background_probe.png"), tabs["bg"]],
              bullets=["Vocalisation alone keeps about 93% of the performance: models mainly listen to the sound",
-                      "With the vocalisation cut out, models still score about 2x chance from the leftover audio"],
-             notes="We cut the vocalisation out of each clip. Performance falls from 0.79 to 0.30, but 0.30 is still twice chance. "
-                   "Source: background_probe SUMMARY.md / Colab output."),
+                      "Vocalisation cut out: about 2x chance (20 dB cut), about 1.5x chance with a stricter 30 dB cut",
+                      "So a small part of the class information comes from the recording context (corrected masks, A100 rerun)"],
+             notes="We cut the vocalisation out of each clip. With a 20 dB cut the models still score about twice chance; with a "
+                   "stricter 30 dB cut about 1.5 times chance, so much of the 20 dB signal was quiet vocalisation. A classifier "
+                   "trained only on the leftover audio is still above chance. Corrected masks (an edge leak was fixed; it changed "
+                   "the 20 dB numbers by at most 0.002). Source: docs/results/a100_rerun."),
         dict(title="Live demo: an unseen scream", imgs=[os.path.join(scr, "demo_cell7_0.png"), os.path.join(scr, "demo_cell11_1.png")],
              bullets=["CNN said crying; both fine-tuned AST models said screaming (raw softmax scores, not calibrated)"],
              notes="Optional: open professor_demo/LIVE_DL_DEMO_executed.ipynb."),
@@ -189,7 +205,7 @@ def slides(R, T, tabs):
              bullets=["Website shift is real (about 6 macro-F1 points)",
                       "Sampling by recording helps consistently (CNN and AST); cross-source contrastive learning does not",
                       "Errors cluster by recording: report results per recording, not per clip",
-                      "Models mainly listen to the vocalisation, but leftover audio still reveals the class",
+                      "Models mainly listen to the vocalisation; a small part of the information comes from the recording context",
                       "Limits: one dataset, small training budget, the contrastive method is not new (applied under strict controls)"],
              notes="Four findings and honest limits."),
     ]
